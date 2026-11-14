@@ -1,0 +1,40 @@
+{
+  "input_width": 1792,
+  "output_width": 1536,
+  "output_height": 10000,
+  "trim_px": 5,
+  "blend_px": 20,
+  "max_view_deg": 68,
+  "dynamic_vertical_bounds": true,
+  "perspective": 0.09,
+  "search_x": 100,
+  "search_y": 75,
+  "contrast_luts": {
+    "3": {
+      "offset": 80,
+      "gain": 1.45
+    }
+  },
+  "cameras": [
+    {
+      "left": 507,
+      "right": 997,
+      "phase": 1532
+    },
+    {
+      "left": 682,
+      "right": 1170,
+      "phase": 360
+    },
+    {
+      "left": 758,
+      "right": 1239,
+      "phase": 762
+    },
+    {
+      "left": 558,
+      "right": 1046,
+      "phase": 1139
+    }
+  ]
+}

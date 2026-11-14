@@ -1,0 +1,7 @@
+__pycache__/
+*.py[cod]
+settings.json
+captures/
+*.log
+*.tmp
+cam_*_genicam.xml

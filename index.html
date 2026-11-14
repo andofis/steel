@@ -1,0 +1,359 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>四相机钢管图像采集控制台</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <header class="topbar">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 40 40" role="img">
+            <path d="M8 12.5A4.5 4.5 0 0 1 12.5 8h15A4.5 4.5 0 0 1 32 12.5v15a4.5 4.5 0 0 1-4.5 4.5h-15A4.5 4.5 0 0 1 8 27.5z" />
+            <circle cx="20" cy="20" r="7" />
+            <path d="M20 13v14M13 20h14" />
+          </svg>
+        </div>
+        <div>
+          <div class="eyebrow">HIKROBOT MVS / LINE SCAN ACQUISITION</div>
+          <h1>四相机钢管图像采集控制台</h1>
+          <p>MV-CL024-91GM · PHOTOELECTRIC TRIGGER · 4 CHANNELS</p>
+        </div>
+      </div>
+
+      <nav class="view-tabs" aria-label="视图切换">
+        <button class="view-tab active" id="singleViewTab" type="button">
+          <span class="tab-index">01</span> 单路监看
+        </button>
+        <button class="view-tab" id="quadViewTab" type="button">
+          <span class="tab-index">02</span> 四路监看
+        </button>
+        <button class="view-tab" id="unwrappedViewTab" type="button">
+          <span class="tab-index">03</span> 展开结果
+        </button>
+      </nav>
+
+      <div class="top-status">
+        <div class="scope-badge"><span id="sdkBadgeDot"></span><span id="sdkBadgeText">MVS SDK 检测中</span></div>
+        <div class="clock-block">
+          <strong id="clockTime">--:--:--</strong>
+          <span id="clockDate">----/--/--</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="main-layout">
+      <aside class="sidebar panel">
+        <div class="panel-heading">
+          <div>
+            <span class="section-kicker">CAMERA LIST</span>
+            <h2>海康相机通道</h2>
+          </div>
+          <span class="count-pill" id="onlineSummary">0 / 4 在线</span>
+        </div>
+
+        <div class="camera-toolbar">
+          <button class="icon-button" id="refreshBtn" type="button" title="重新枚举相机">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11a8.1 8.1 0 0 0-15.5-2M4 4v5h5M4 13a8.1 8.1 0 0 0 15.5 2M20 20v-5h-5"/></svg>
+            刷新
+          </button>
+          <button class="icon-button primary-ghost" id="connectAllBtn" type="button" title="连接四台相机">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 12h8M6 8h12a4 4 0 0 1 0 8H6a4 4 0 0 1 0-8z"/></svg>
+            全部连接
+          </button>
+          <button class="icon-button danger-ghost" id="disconnectAllBtn" type="button" title="断开全部相机">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m4 4 16 16M8 8H6a4 4 0 1 0 0 8h8m2-8h2a4 4 0 0 1 0 8"/></svg>
+            断开
+          </button>
+        </div>
+
+        <div class="camera-list" id="cameraList" aria-live="polite"></div>
+
+        <div class="sidebar-foot">
+          <div class="mini-section-title">采集流程</div>
+          <p>光电开关触发后，四台线阵相机按目标行频连续采线；钢管离开后补采指定时间，最终各自生成一张完整 PNG 图像。</p>
+          <div class="local-note"><span class="shield-dot"></span> 图像仅保存在本机</div>
+        </div>
+      </aside>
+
+      <section class="workspace panel">
+        <div class="workspace-toolbar">
+          <div class="channel-title">
+            <span class="live-indicator" id="stageLiveDot"></span>
+            <div>
+              <strong id="stageCameraName">cam_0</strong>
+              <span id="stageCameraDetail">等待连接 MVS 相机</span>
+            </div>
+          </div>
+
+          <div class="workspace-actions">
+            <button class="toolbar-button" id="previewBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg>
+              开始实时预览
+            </button>
+            <button class="toolbar-button accent-button" id="acquireBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/><circle cx="12" cy="12" r="8"/></svg>
+              开始触发采集
+            </button>
+          </div>
+        </div>
+
+        <div class="stage-wrap">
+          <div class="view-grid single" id="viewGrid"></div>
+          <section class="unwrapped-view hidden" id="unwrappedView">
+            <div class="unwrapped-toolbar">
+              <div class="unwrapped-title">
+                <span class="section-kicker">TUBE UNWRAP RESULT</span>
+                <strong>钢管侧面展开图</strong>
+                <span id="unwrappedMeta">等待第一根钢管采集结果</span>
+              </div>
+              <div class="unwrapped-actions">
+                <button type="button" id="unwrappedZoomOutBtn" title="缩小">−</button>
+                <button type="button" id="unwrappedFitBtn">适应宽度</button>
+                <button type="button" id="unwrappedZoomInBtn" title="放大">＋</button>
+                <button type="button" id="unwrappedOpenOutputBtn">打开目录</button>
+              </div>
+            </div>
+            <div class="unwrapped-scroll" id="unwrappedScroll">
+              <img id="unwrappedImage" alt="钢管四视角展开结果" hidden>
+              <div class="unwrapped-placeholder" id="unwrappedPlaceholder">
+                <span class="unwrapped-placeholder-mark">03</span>
+                <strong>暂无展开结果</strong>
+                <p>完成一次四路钢管采集后，这里会直接显示拼接后的侧面展开图。</p>
+              </div>
+            </div>
+          </section>
+          <div class="stage-corner top-left"></div>
+          <div class="stage-corner top-right"></div>
+          <div class="stage-corner bottom-left"></div>
+          <div class="stage-corner bottom-right"></div>
+          <div class="batch-flash" id="batchFlash">
+            <span>PIPE CAPTURED</span>
+            <strong>四路钢管图像已保存</strong>
+          </div>
+        </div>
+
+        <div class="capture-strip">
+          <div class="strip-stat">
+            <span>当前模式</span>
+            <strong id="currentModeLabel">空闲</strong>
+          </div>
+          <div class="strip-stat">
+            <span>已采钢管</span>
+            <strong id="pipeCount">0</strong>
+          </div>
+          <div class="strip-stat">
+            <span>已保存图像</span>
+            <strong id="savedCount">0</strong>
+          </div>
+          <div class="strip-stat wide">
+            <span>输出位置</span>
+            <strong id="outputPath">captures</strong>
+          </div>
+        </div>
+
+        <section class="capture-history">
+          <div class="capture-history-header">
+            <div>
+              <span class="section-kicker">CAPTURE HISTORY</span>
+              <strong>本次运行采集记录</strong>
+            </div>
+            <span class="history-summary" id="historySummary">0 根钢管 · 0 张图像</span>
+          </div>
+          <div class="capture-history-table">
+            <div class="history-row history-head-row">
+              <span>序号</span>
+              <span>文件夹名称</span>
+              <span>图像数量</span>
+              <span>状态</span>
+              <span>完成时间</span>
+            </div>
+            <div class="history-list" id="historyList">
+              <div class="history-empty" id="historyEmpty">尚未完成钢管采集</div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <aside class="control-panel panel">
+        <div class="panel-heading compact">
+          <div>
+            <span class="section-kicker">ACQUISITION CONTROL</span>
+            <h2>采集参数</h2>
+          </div>
+          <span class="selected-chip" id="selectedIndexChip">CAM 0</span>
+        </div>
+
+        <div class="control-scroll">
+          <section class="control-section">
+            <div class="control-section-title">
+              <span>当前设备</span>
+              <span class="tiny-status" id="controlDeviceState">等待连接</span>
+            </div>
+            <div class="device-identity">
+              <div class="device-glyph">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h4l2-3h4l2 3h4v13H4z"/><circle cx="12" cy="13" r="4"/></svg>
+              </div>
+              <div>
+                <strong id="controlDeviceName">MV-CL024-91GM</strong>
+                <p id="controlDeviceSerial">SERIAL: DB0959183</p>
+              </div>
+            </div>
+          </section>
+
+          <section class="control-section">
+            <div class="control-section-title">
+              <span>相机参数</span>
+              <span class="tiny-status" id="parameterState">未应用</span>
+            </div>
+
+            <label class="field">
+              <span>曝光时间 <em>μs</em></span>
+              <input id="exposureInput" type="number" min="1" max="1000000" step="1" value="182">
+            </label>
+            <label class="field">
+              <span>数字增益 <em>dB</em></span>
+              <input id="gainInput" type="number" min="-24" max="24" step="0.1" value="9.0" title="相机 DigitalShift：0 dB 不改变，+6 dB 约提高一倍亮度">
+            </label>
+            <label class="field">
+              <span>目标行频 <em>Hz</em></span>
+              <input id="lineRateInput" type="number" min="1" max="100000" step="1" value="4100">
+            </label>
+            <div class="field-row">
+              <label class="field">
+                <span>触发源</span>
+                <select id="triggerSourceSelect">
+                  <option value="Line0" selected>硬件 Line0</option>
+                  <option value="Software">软件触发</option>
+                </select>
+              </label>
+              <label class="field">
+                <span>触发极性</span>
+                <select id="polaritySelect">
+                  <option value="LevelLow" selected>低电平有效</option>
+                  <option value="LevelHigh">高电平有效</option>
+                  <option value="FallingEdge">下降沿</option>
+                  <option value="RisingEdge">上升沿</option>
+                </select>
+              </label>
+            </div>
+
+            <button class="wide-button outlined" id="applyParamsBtn" type="button">应用到当前相机</button>
+            <p class="helper-text">增益使用相机 DigitalShift：0 dB 为原始亮度，+6 dB 约提高一倍，范围 -24～+24 dB。每台相机独立应用参数；展开结果由 tube_unwrap 模块生成。</p>
+          </section>
+
+          <section class="control-section">
+            <div class="control-section-title">
+              <span>钢管触发采集</span>
+              <span class="tiny-status" id="acquisitionState">已停止</span>
+            </div>
+            <div class="field-row">
+              <label class="field">
+                <span>头部延迟 <em>ms</em></span>
+                <input id="headDelayInput" type="number" min="0" max="10000" step="1" value="0">
+              </label>
+              <label class="field">
+                <span>尾部补采 <em>ms</em></span>
+                <input id="tailDelayInput" type="number" min="0" max="10000" step="1" value="430">
+              </label>
+            </div>
+            <div class="field-row">
+              <label class="field">
+                <span>无料确认 <em>ms</em></span>
+                <input id="noSignalInput" type="number" min="0" max="5000" step="1" value="80">
+              </label>
+              <label class="field">
+                <span>四路对齐等待 <em>ms</em></span>
+                <input id="streamAlignInput" type="number" min="0" max="5000" step="50" value="1000" title="收尾时等待四台相机最后一帧到齐，避免某一路少一帧。">
+              </label>
+            </div>
+            <button class="wide-button sequence-button" id="startAcquisitionBtn" type="button">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg>
+              <span>开始等待光电触发</span>
+            </button>
+            <p class="helper-text">触发源为相机 Line0。每根钢管自动保存四张相机原图，并调用 tube_unwrap 生成四视角展开图。</p>
+          </section>
+
+          <section class="control-section storage-section">
+            <div class="control-section-title">
+              <span>保存位置</span>
+              <span class="tiny-status" id="storageState">本地目录</span>
+            </div>
+            <label class="field">
+              <span>图像根目录</span>
+              <input id="outputDirInput" type="text" value="captures">
+            </label>
+            <div class="field-row storage-actions">
+              <label class="field">
+                <span>钢管文件夹前缀</span>
+                <input id="folderPrefixInput" type="text" maxlength="80" value="pipe">
+              </label>
+              <button class="wide-button subtle" id="chooseOutputDirBtn" type="button">浏览目录</button>
+            </div>
+            <div class="storage-box">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h7l2 2h9v10H3z"/></svg>
+              <div>
+                <strong id="storageName">captures</strong>
+                <p>每根钢管一个独立文件夹</p>
+              </div>
+            </div>
+            <button class="wide-button subtle" id="openOutputBtn" type="button">打开图像保存目录</button>
+          </section>
+
+          <section class="event-section">
+            <div class="control-section-title">
+              <span>运行日志</span>
+              <button class="text-button" id="clearLogBtn" type="button">清空</button>
+            </div>
+            <div class="event-list" id="eventList"></div>
+          </section>
+        </div>
+      </aside>
+    </main>
+
+    <footer class="statusbar">
+      <div class="status-left">
+        <span class="status-dot" id="footerDot"></span>
+        <span id="footerStatus">正在初始化海康 MVS SDK</span>
+      </div>
+      <div class="status-center">
+        <span>模式 <strong id="footerMode">空闲</strong></span>
+        <span>相机 <strong id="footerOnline">0 / 4</strong></span>
+        <span>钢管 <strong id="footerPipes">0</strong></span>
+      </div>
+      <div class="status-right">
+        <span id="footerDirectory">输出：captures</span>
+        <span class="build-label">HIKROBOT CAPTURE v1.0</span>
+      </div>
+    </footer>
+  </div>
+
+  <div class="toast-stack" id="toastStack" aria-live="polite"></div>
+
+  <template id="cameraCardTemplate">
+    <article class="camera-card">
+      <button class="camera-select-surface" type="button">
+        <span class="camera-status-dot"></span>
+        <span class="camera-copy">
+          <span class="camera-name"></span>
+          <span class="camera-device"></span>
+        </span>
+        <span class="camera-thumb-wrap">
+          <canvas class="camera-thumb" width="104" height="64"></canvas>
+          <span class="thumb-placeholder">NO SIGNAL</span>
+        </span>
+      </button>
+      <div class="camera-card-foot">
+        <span class="camera-serial"></span>
+        <button class="camera-connect-button" type="button">连接</button>
+      </div>
+    </article>
+  </template>
+
+  <script src="app.js"></script>
+</body>
+</html>

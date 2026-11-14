@@ -1,0 +1,15 @@
+{
+  "input_shape": [11264, 1792],
+  "width": 1280,
+  "height": 9400,
+  "trim_px": 5,
+  "blend_px": 12,
+  "max_view_deg": 68,
+  "hole_settings": {"minimum_quality": 0.5},
+  "cameras": [
+    {"left": 756, "right": 1163, "top": 1237, "bottom": 10646, "phase": 772},
+    {"left": 762, "right": 1171, "top": 1214, "bottom": 10623, "phase": 430},
+    {"left": 596, "right": 991, "top": 1118, "bottom": 10522, "phase": 132},
+    {"left": 565, "right": 963, "top": 987, "bottom": 10399, "phase": 1083}
+  ]
+}
