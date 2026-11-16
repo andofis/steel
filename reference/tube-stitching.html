@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>钢管拼接参数和入口速查</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>钢管拼接速查</h1>
+    <p><a href="../lessons/0001-tube-stitching.html">四路相机怎样拼出一张钢管展开图</a></p>
+  </header>
+  <section>
+    <h2>从哪里读代码</h2>
+    <dl>
+      <dt>采集收尾</dt>
+      <dd>每路按时间排序短帧，纵向连接字节。<a href="../hikrobot_camera.py#L885">采集服务 · 第 885 行</a></dd>
+      <dt>四路输入</dt>
+      <dd>按槽位重建四张 Mono8 图，估算两端，组装当前批次的配方。<a href="../tube_unwrap_bridge.py#L111">适配器 · 第 111 行</a></dd>
+      <dt>几何展开</dt>
+      <dd>定位边界并生成采样坐标，以双线性插值取原图灰度。<a href="../tube_unwrap/__init__.py#L150">展开入口 · 第 150 行</a> · <a href="../tube_unwrap/geometry.py#L170">坐标计算 · 第 170 行</a></dd>
+      <dt>接缝与孔</dt>
+      <dd>按圆周距离融合，再恢复较正视相机的孔轮廓。<a href="../tube_unwrap/__init__.py#L199">接缝融合 · 第 199 行</a> · <a href="../tube_unwrap/hole_blending.py#L101">孔洞保护 · 第 101 行</a></dd>
+      <dt>保存与展示</dt>
+      <dd>成功的展开结果先写出，之后保存原图和批次清单。<a href="../hikrobot_camera.py#L1241">保存 · 第 1241 行</a> · <a href="../server.py#L96">图片接口 · 第 96 行</a></dd>
+    </dl>
+  </section>
+  <section>
+    <h2>运行配方</h2>
+    <dl>
+      <dt>图像</dt><dd>每路输入宽 1792，输入高随批次变化。输出宽 1536、高 10000。</dd>
+      <dt>搜索范围</dt><dd>名义左右边附近各 ±100 像素，上下端估计附近各 ±75 像素。</dd>
+      <dt>投影</dt><dd>透视系数 0.09，每台支持正对方向左右各 68°。沿上下端各内缩 5 像素。</dd>
+      <dt>接缝</dt><dd><code>blend_px=20</code>，两相邻视角都有效时在分界两侧逐步混合，分界处各 50%。</dd>
+      <dt>对比度</dt><dd>槽位 3 即 <code>cam_270</code>，围绕灰度 80 将差值放大 1.45 倍，再限制在 0–255。</dd>
+    </dl>
+    <table>
+      <caption>标定值</caption>
+      <thead><tr><th scope="col">相机</th><th scope="col">名义左边</th><th scope="col">名义右边</th><th scope="col">正对列 phase</th></tr></thead>
+      <tbody class="numeric">
+        <tr><th scope="row">cam_0</th><td>507</td><td>997</td><td>1532</td></tr>
+        <tr><th scope="row">cam_90</th><td>682</td><td>1170</td><td>360</td></tr>
+        <tr><th scope="row">cam_180</th><td>758</td><td>1239</td><td>762</td></tr>
+        <tr><th scope="row">cam_270</th><td>558</td><td>1046</td><td>1139</td></tr>
+      </tbody>
+    </table>
+    <p class="refs"><a href="../tube_unwrap_recipe.json">运行配方 JSON</a></p>
+  </section>
+  <section>
+    <h2>从批次记录开始排查</h2>
+    <dl>
+      <dt><code>ok</code></dt><dd>展开算法成功生成图像。</dd>
+      <dt><code>invalid_input</code></dt><dd>先核对是否有四路、各路宽度、像素格式和数据长度。</dd>
+      <dt><code>review</code></dt><dd>结合错误消息检查端部搜索区、左右边缘和映射坐标是否越界。</dd>
+    </dl>
+    <p>孔洞候选服务于拼接保形。配方沿用库默认值，包括灰度低于 55、候选宽高各至少 8 像素。对同一孔选择正视程度最高的视角，保护轮廓附近约 4 像素，外侧约 12 像素逐渐混回管壁。</p>
+    <p class="refs"><a href="../tube_unwrap/holes.py#L24">孔候选阈值 · 第 24 行</a> · <a href="../tube_unwrap/hole_blending.py#L40">局部权重 · 第 40 行</a> · <a href="../tube_unwrap/__init__.py#L150">返回状态 · 第 150 行</a></p>
+  </section>
+</main>
+</body>
+</html>

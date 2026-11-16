@@ -9,6 +9,9 @@
   "perspective": 0.09,
   "search_x": 100,
   "search_y": 75,
+  "hole_settings": {
+    "merge_tolerance_px": 16
+  },
   "contrast_luts": {
     "3": {
       "offset": 80,

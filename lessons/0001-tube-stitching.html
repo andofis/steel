@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>钢管拼接如何从四路相机得到一张展开图</title>
+  <link rel="stylesheet" href="../assets/lesson.css">
+</head>
+<body>
+<main>
+  <header>
+    <h1>四路相机怎样拼出一张钢管展开图</h1>
+    <p class="lead">想象沿钢管长度划开外皮，再把外皮摊平。展开图横向走完一整圈，纵向从钢管一端走到另一端。</p>
+  </header>
+
+  <figure>
+    <div class="flow">
+      <div><strong>相机连续取流</strong><span>每路积累同一根管的短帧</span></div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div><strong>同路向下接帧</strong><span>四台相机各得到一张长图</span></div>
+      <span class="arrow" aria-hidden="true">→</span>
+      <div><strong>四路展开并融合</strong><span>一张 1536 × 10000 灰度图</span></div>
+    </div>
+    <figcaption>短帧接长发生在采集服务。圆柱展开和接缝处理发生在 <code>tube_unwrap</code>。</figcaption>
+  </figure>
+
+  <section>
+    <h2>同一台相机先把短帧接长</h2>
+    <p>采集时四台相机连续取流。程序读 <code>cam_0</code> 的 <code>Line0</code> 信号来划分哪几段图属于同一根钢管。钢管离开后，程序再补采尾部，通过各路累计行数判断是否可以收尾。等待超时就使用已经拿到的帧。</p>
+    <p>每一路独立按帧收到的时间排序，再直接连接灰度像素字节。假设一台相机收到三张宽 1792、高 256 的短帧，就从上到下接成宽 1792、高 768 的长图。每个像素值原样保留。四路长图交给后台的 <code>_save_pipe</code>。</p>
+    <p class="refs"><a href="../hikrobot_camera.py#L344">采集模式 · 第 344 行</a> · <a href="../hikrobot_camera.py#L885">收尾接帧 · 第 885 行</a></p>
+  </section>
+
+  <section>
+    <h2>每张长图先找出管壁和两个端部</h2>
+    <p><code>TubeUnwrapBridge</code> 按 <code>cam_0 → cam_90 → cam_180 → cam_270</code> 读取四张长图。它用每行平均灰度找管头管尾的大致位置。运行配方提供每路左右边的起始估计、正对方向 <code>phase</code> 和透视参数，并对 <code>cam_270</code> 额外做一次对比度修正。</p>
+    <p><code>locate_body</code> 在这些位置附近看灰度跳变。左右边按行定位，可以随长度略微偏移。上下端各拟合一条曲线，可以在图中略有弯曲。后续映射沿原图上下端各内缩 5 像素，以拟合后的位置为准。</p>
+    <p class="refs"><a href="../tube_unwrap_bridge.py#L36">预定位与适配器 · 第 36 行</a> · <a href="../tube_unwrap/geometry.py#L120">精定位 · 第 120 行</a> · <a href="../tube_unwrap_recipe.json">运行配方</a></p>
+  </section>
+
+  <section>
+    <h2>在展开图上选一点，反查原图要取哪里</h2>
+    <p>横向 1536 列分给一整圈，约 4.27 列对应一度。纵向 10000 行表示有效管长的归一化位置。输出第 5000 行大约对应管长的一半，每台相机都去自己原图上找这个相对位置。</p>
+    <p>对每台相机，程序先算目标列偏离它正对钢管方向的角度。再把圆周角度经圆柱透视公式换成原图横向偏移，结合当前管壁的中心和半宽求出 <code>map_x</code>。沿该横向位置上的管头到管尾按输出行的比例取点，得到 <code>map_y</code>。例如横向比例为 0 时，读的是这台相机眼中的管壁中央。</p>
+    <p>得到坐标后，<code>cv2.remap</code> 从原图取灰度。坐标落在像素中间时用双线性插值，可理解为按距离给附近四个像素分权重。项目每次处理 256 个<strong>输出</strong>行。这与相机请求的 256 行采集帧属于各自独立的处理步骤。</p>
+    <p class="refs"><a href="../tube_unwrap/geometry.py#L170">坐标映射 · 第 170 行</a> · <a href="../tube_unwrap/__init__.py#L183">重采样 · 第 183 行</a> · <a href="https://docs.opencv.org/5.0/main_modules/imgproc_transform.html">OpenCV 官方 remap 文档</a></p>
+  </section>
+
+  <section>
+    <h2>接缝处逐步把权重交给下一台相机</h2>
+    <p>每一列优先选方向最正对它的相机。参与采样的相机必须在正对方向的 ±68° 内。两台相邻相机离这一列差不多近时，就把两台采出的灰度做加权平均。下方的示例使用项目最前面的一条接缝，固定两台相机采出的灰度为 80 和 160。</p>
+    <div class="panel">
+      <label for="seam-column">拖动查看展开图的列号 <output id="column-value" for="seam-column">178</output></label>
+      <input id="seam-column" type="range" min="158" max="198" value="178" step="1">
+      <div class="scale"><span>158 · cam_0 一侧</span><span>198 · cam_90 一侧</span></div>
+      <div class="meter" aria-hidden="true"><span id="camera-share"></span></div>
+      <p><output id="mix-value" for="seam-column">cam_0 50% · cam_90 50% · 灰度 120</output></p>
+      <span class="swatch" id="gray-swatch" aria-hidden="true" style="background: rgb(120, 120, 120)"></span> 混合后的像素
+    </div>
+    <p><code>cam_0</code> 的正对列是 1532，越过图的右边会回到左边。把 1532 看作 −4，与 <code>cam_90</code> 的 360 取中点得到 178。第 168 列更靠近 <code>cam_0</code>，混合比例是 75% 和 25%，得到灰度 100。当前 <code>blend_px=20</code>，这一条接缝在中心左右各约 20 列内过渡。</p>
+    <p class="refs"><a href="../tube_unwrap/__init__.py#L92">选主次相机与权重 · 第 92 行</a> · <a href="../tube_unwrap/__init__.py#L199">融合 · 第 199 行</a></p>
+  </section>
+
+  <section>
+    <h2>孔洞保形，结果按批次发布</h2>
+    <p>同一孔洞在两个视角投影后，轮廓可能略有错位。直接平均时，另一台相机的亮管壁会把暗孔边缘冲淡。程序先在每张长图的管壁内找暗轮廓，再把它们投到展开图。若多个候选来自同一处孔，选看得更正的相机保留孔及周围一小圈，再向外平滑过渡回普通接缝。轮廓查重和局部融合都考虑展开图左右相连。</p>
+    <p>展开成功时，程序先写出 <code>unwrapped.png</code>，供页面读取。随后并行写四张 <code>cam_*.png</code>，并把状态写入 <code>capture.json</code>。若少了一路、输入格式不符、边界找不准或映射越出原图，已有的原图仍可保存，批次记录会含展开失败的信息。</p>
+    <p class="refs"><a href="../tube_unwrap/holes.py#L150">孔洞候选 · 第 150 行</a> · <a href="../tube_unwrap/hole_blending.py#L101">孔洞保护 · 第 101 行</a> · <a href="../hikrobot_camera.py#L1241">保存顺序 · 第 1241 行</a></p>
+  </section>
+
+  <section>
+    <h2>动手验算一列</h2>
+    <p>先离开滑块，想一想第 188 列应该由哪台相机占较大权重。如果两台仍分别读到灰度 80 和 160，输出是多少？</p>
+    <details>
+      <summary>看答案</summary>
+      <p>188 在中点 178 的右侧 10 列，<code>cam_90</code> 占 75%，<code>cam_0</code> 占 25%。灰度为 <code>160 × 0.75 + 80 × 0.25 = 140</code>。可将滑块移到 188 列核对。</p>
+    </details>
+  </section>
+
+  <footer>
+    <p>读源码可以从 <a href="../tube_unwrap/__init__.py#L150"><code>TubeUnwrapper.process</code> 第 150 行</a> 开始，再打开<a href="../reference/tube-stitching.html">参数和代码位置速查</a>。有哪一步想用实际输入图再走一遍，可以继续问我。</p>
+  </footer>
+</main>
+<script>
+  const slider = document.getElementById("seam-column");
+  const columnValue = document.getElementById("column-value");
+  const mixValue = document.getElementById("mix-value");
+  const cameraShare = document.getElementById("camera-share");
+  const graySwatch = document.getElementById("gray-swatch");
+  const width = 1536;
+  const blend = 20;
+  const percent = new Intl.NumberFormat("zh-CN", { style: "percent", maximumFractionDigits: 1 });
+
+  function circularDistance(column, phase) {
+    return Math.abs((column - phase + width * 1.5) % width - width / 2);
+  }
+
+  function updateSeam() {
+    const column = Number(slider.value);
+    const zeroDistance = circularDistance(column, 1532);
+    const ninetyDistance = circularDistance(column, 360);
+    const secondaryShare = 0.5 * Math.max(0, 1 - Math.abs(zeroDistance - ninetyDistance) / (2 * blend));
+    const zeroShare = zeroDistance <= ninetyDistance ? 1 - secondaryShare : secondaryShare;
+    const ninetyShare = 1 - zeroShare;
+    const gray = Math.round(80 * zeroShare + 160 * ninetyShare);
+
+    columnValue.value = column;
+    mixValue.value = `cam_0 ${percent.format(zeroShare)} · cam_90 ${percent.format(ninetyShare)} · 灰度 ${gray}`;
+    cameraShare.style.width = `${100 * zeroShare}%`;
+    graySwatch.style.backgroundColor = `rgb(${gray}, ${gray}, ${gray})`;
+  }
+
+  slider.addEventListener("input", updateSeam);
+  updateSeam();
+</script>
+</body>
+</html>
