@@ -17,10 +17,11 @@ import sys
 import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from image_codec import create_unwrapped_image, mono8_to_preview_bmp, write_mono8_png
 
@@ -430,6 +431,8 @@ class HikRobotService:
     def __init__(self) -> None:
         self.lock = threading.RLock()
         self.preview_lock = threading.Lock()
+        self.preview_condition = threading.Condition()
+        self.preview_pause_count = 0
         self.group_lock = threading.Lock()
         self.executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="hik-save")
         self.preview_executor = ThreadPoolExecutor(max_workers=4, thread_name_prefix="hik-preview")
@@ -1129,10 +1132,23 @@ class HikRobotService:
 
     def _on_frame(self, runtime: CameraRuntime, packet: FramePacket) -> None:
         now = time.monotonic()
-        if now - self.preview_times[runtime.slot] >= 0.22 and not self.preview_pending[runtime.slot]:
-            self.preview_pending[runtime.slot] = True
-            self.preview_times[runtime.slot] = now
-            self.preview_executor.submit(self._build_preview, runtime.slot, packet)
+        queue_preview = False
+        with self.preview_condition:
+            if (self.preview_pause_count == 0
+                    and now - self.preview_times[runtime.slot] >= 0.22
+                    and not self.preview_pending[runtime.slot]):
+                self.preview_pending[runtime.slot] = True
+                self.preview_times[runtime.slot] = now
+                queue_preview = True
+        if queue_preview:
+            try:
+                future = self.preview_executor.submit(self._build_preview, runtime.slot, packet)
+                future.add_done_callback(
+                    lambda _future, slot=runtime.slot: self._preview_finished(slot)
+                )
+            except RuntimeError:
+                # Executor shutdown must not interrupt the acquisition callback.
+                self._preview_finished(runtime.slot)
 
         if self.mode != "acquisition":
             return
@@ -1153,8 +1169,34 @@ class HikRobotService:
         if frames:
             self.executor.submit(self._save_pipe, frames)
 
+    def _preview_finished(self, slot: int) -> None:
+        with self.preview_condition:
+            self.preview_pending[slot] = False
+            self.preview_condition.notify_all()
+
+    @contextmanager
+    def _pause_preview_for_unwrap(self) -> Iterator[None]:
+        # Reference counting keeps previews paused while any batch is unwrapping.
+        with self.preview_condition:
+            self.preview_pause_count += 1
+            first = self.preview_pause_count == 1
+        try:
+            if first:
+                self._log("INFO", "开始展开：暂停四路实时预览更新，相机采集继续")
+            with self.preview_condition:
+                self.preview_condition.wait_for(lambda: not any(self.preview_pending))
+            yield
+        finally:
+            with self.preview_condition:
+                self.preview_pause_count -= 1
+                if self.preview_pause_count == 0:
+                    self._log("INFO", "展开任务已结束：恢复四路实时预览更新")
+
     def _build_preview(self, slot: int, packet: FramePacket) -> None:
         try:
+            with self.preview_condition:
+                if self.preview_pause_count:
+                    return
             image = mono8_to_preview_bmp(packet.width, packet.height, packet.data, max_width=720)
             with self.preview_lock:
                 self.preview_bytes[slot] = image
@@ -1166,8 +1208,6 @@ class HikRobotService:
                 }
         except Exception as exc:
             self._log("WARN", "%s 预览生成失败: %s" % (CAMERA_NAMES[slot], exc))
-        finally:
-            self.preview_pending[slot] = False
     def _build_chinese_timeline(self, timeline: Dict[str, Any]) -> Dict[str, Any]:
         events = {event.get("stage"): event for event in timeline.get("events", [])}
         durations = timeline.get("durations_ms") or {}
@@ -1209,6 +1249,7 @@ class HikRobotService:
         add_stage("收尾开始", "finalize_started", "line_inactive", "离开后等待约 ")
         add_stage("四路帧拼接完成", "assembly_completed", "finalize_started", "拼接 ")
         add_stage("开始保存", "save_started", "assembly_completed", "排队约 ")
+        add_stage("实时预览已暂停", "preview_paused", "preview_pause_requested", "等待预览结束 ", "仅暂停画面更新，相机采集继续")
         add_stage("开始生成展开图", "unwrap_started", "save_started", "保存准备 ")
         add_stage("展开算法完成", "unwrap_completed", "unwrap_started", "展开算法 ")
         add_stage("unwrapped.png 保存完成", "unwrapped_image_saved", "unwrap_completed", "展开图写盘 ", "此时界面已可查看")
@@ -1264,15 +1305,18 @@ class HikRobotService:
             folder.mkdir(parents=True, exist_ok=True)
             timeline["durations_ms"]["folder_prepare"] = round((time.perf_counter() - folder_started_perf) * 1000.0, 2)
             try:
-                unwrap_started = add_timeline_event(timeline, "unwrap_started")
-                unwrap_started_perf = time.perf_counter()
-                if self.unwrap_bridge is None:
-                    raise RuntimeError(self.unwrap_bridge_error or "钢管展开模块不可用")
-                bridge_result = self.unwrap_bridge.process_packets(frames)
-                if not bridge_result.ok or bridge_result.image is None:
-                    raise RuntimeError("%s: %s" % (bridge_result.status, bridge_result.message))
-                unwrap_completed = add_timeline_event(timeline, "unwrap_completed")
-                timeline["durations_ms"]["unwrap_algorithm"] = round((time.perf_counter() - unwrap_started_perf) * 1000.0, 2)
+                add_timeline_event(timeline, "preview_pause_requested")
+                with self._pause_preview_for_unwrap():
+                    add_timeline_event(timeline, "preview_paused")
+                    unwrap_started = add_timeline_event(timeline, "unwrap_started")
+                    unwrap_started_perf = time.perf_counter()
+                    if self.unwrap_bridge is None:
+                        raise RuntimeError(self.unwrap_bridge_error or "钢管展开模块不可用")
+                    bridge_result = self.unwrap_bridge.process_packets(frames)
+                    if not bridge_result.ok or bridge_result.image is None:
+                        raise RuntimeError("%s: %s" % (bridge_result.status, bridge_result.message))
+                    unwrap_completed = add_timeline_event(timeline, "unwrap_completed")
+                    timeline["durations_ms"]["unwrap_algorithm"] = round((time.perf_counter() - unwrap_started_perf) * 1000.0, 2)
                 unwrapped_height, unwrapped_width = bridge_result.image.shape
                 unwrapped_path = folder / "unwrapped.png"
                 unwrap_write_started_perf = time.perf_counter()
@@ -1570,6 +1614,8 @@ class HikRobotService:
             return self.preview_bytes[slot], dict(self.preview_frame_info[slot])
 
     def get_state(self) -> Dict[str, Any]:
+        with self.preview_condition:
+            preview_paused = self.preview_pause_count > 0
         with self.lock:
             cameras = []
             for runtime in self.cameras:
@@ -1597,6 +1643,7 @@ class HikRobotService:
                 "mvimport_path": str(self.mvimport_path),
                 "runtime_path": self.runtime_path,
                 "mode": self.mode,
+                "preview_paused": preview_paused,
                 "pipe_count": self.pipe_count,
                 "saved_count": self.saved_count,
                 "incomplete_count": self.incomplete_count,

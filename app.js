@@ -628,7 +628,7 @@
 
       viewport.classList.toggle("offline", !isOnline);
       viewport.querySelector(".viewport-badge").textContent = isOnline
-        ? (server.mode === "acquisition" ? "TRIGGER" : server.mode === "preview" ? "LIVE" : "MVS")
+        ? (server.preview_paused ? "预览已暂停" : server.mode === "acquisition" ? "TRIGGER" : server.mode === "preview" ? "LIVE" : "MVS")
         : "NO SIGNAL";
       viewport.querySelector(".viewport-resolution").textContent = isOnline && camera.width
         ? `${camera.width} × ${camera.height || "?"}`
@@ -670,13 +670,16 @@
     const modeLabels = { idle: "空闲", preview: "实时预览", acquisition: "等待光电触发" };
     const modeLabel = modeLabels[server.mode] || "空闲";
     const online = (server.cameras || []).filter((camera) => camera.status === "online").length;
-    ui.currentModeLabel.textContent = modeLabel;
+    ui.currentModeLabel.textContent = server.preview_paused ? "展开中，预览已暂停" : modeLabel;
     ui.footerMode.textContent = modeLabel;
     ui.acquisitionState.textContent = server.mode === "acquisition" ? "运行中" : "已停止";
     ui.acquisitionState.className = `tiny-status ${server.mode === "acquisition" ? "warn" : ""}`;
     if (!server.sdk_ready) {
       ui.footerStatus.textContent = server.sdk_error || "MVS SDK 未就绪";
       ui.footerDot.style.background = "var(--danger)";
+    } else if (server.preview_paused) {
+      ui.footerStatus.textContent = "展开中 · 实时预览已暂停 · 相机采集继续";
+      ui.footerDot.style.background = "var(--amber)";
     } else if (server.mode === "acquisition") {
       ui.footerStatus.textContent = "采集中 · 等待 Line0 光电触发";
       ui.footerDot.style.background = "var(--danger)";
@@ -777,6 +780,7 @@
   }
 
   function pollPreviews() {
+    if (state.server?.preview_paused) return;
     const cameras = state.server?.cameras || [];
     cameras.forEach((camera, index) => {
       if (camera.status !== "online" || state.previewInFlight[index]) return;
