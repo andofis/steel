@@ -1,7 +1,7 @@
 """Locate the tube in each camera and map between image and surface pixels."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 import cv2
 import numpy as np
@@ -149,6 +149,54 @@ def locate_body(image: np.ndarray, calibration: CameraCalibration) -> BodyGeomet
         array.flags.writeable = False
     return BodyGeometry(left, right, float(top_curve[0]), float(bottom_curve[0]),
                         top_curve, bottom_curve)
+
+
+def _recenter_side_search(image: np.ndarray, calibration: CameraCalibration) -> CameraCalibration:
+    inset = calibration.search_y + 30
+    start = round(calibration.top) + inset
+    stop = round(calibration.bottom) - inset
+    if not 0 <= start < stop <= image.shape[0]:
+        raise ValueError("Tube ends leave no interior rows for automatic side search")
+
+    rows = np.linspace(start, stop - 1, min(129, stop - start), dtype=np.intp)
+    sampled = cv2.GaussianBlur(image[rows], (5, 1), 1)
+    # Leave room for the side fitter's minimum search window and padding.
+    margin = 7
+    if image.shape[1] < 2 * margin + 36:
+        raise ValueError("Image is too narrow for automatic side search")
+    gradient = cv2.Sobel(sampled, cv2.CV_16S, 1, 0, ksize=3)[:, margin:-margin]
+    profile = np.median(gradient, axis=0)
+    left, right = int(profile.argmax()), int(profile.argmin())
+    if right - left < 35 or profile[left] < 25 or profile[right] > -25:
+        # A slanted edge can be strong in each row but weak at any fixed column.
+        left_peaks, right_peaks = gradient.argmax(axis=1), gradient.argmin(axis=1)
+        samples = np.arange(len(rows))
+        usable = ((right_peaks - left_peaks >= 35)
+                  & (gradient[samples, left_peaks] >= 40)
+                  & (gradient[samples, right_peaks] <= -40))
+        if usable.mean() < 0.70:
+            raise ValueError("Could not find two persistent tube side edges")
+        left = round(float(np.median(left_peaks[usable])))
+        right = round(float(np.median(right_peaks[usable])))
+    left += margin
+    right += margin
+
+    span = min(calibration.search_x, left - 3, image.shape[1] - right - 4, (right - left) // 4)
+    return replace(calibration, left=float(left), right=float(right), search_x=span)
+
+
+def locate_body_with_fallback(
+    image: np.ndarray, calibration: CameraCalibration,
+) -> tuple[BodyGeometry, CameraCalibration]:
+    """Refit with new side-edge seeds when the calibrated search fails."""
+    try:
+        return locate_body(image, calibration), calibration
+    except ValueError as calibrated_error:
+        try:
+            adjusted = _recenter_side_search(image, calibration)
+            return locate_body(image, adjusted), adjusted
+        except ValueError as adaptive_error:
+            raise ValueError(f"{calibrated_error}; automatic side search failed: {adaptive_error}") from adaptive_error
 
 
 def _row_profiles(

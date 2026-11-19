@@ -14,7 +14,7 @@ from typing import Sequence
 import cv2
 import numpy as np
 
-from .geometry import CameraCalibration, locate_body, project_contour, source_coordinates
+from .geometry import CameraCalibration, locate_body_with_fallback, project_contour, source_coordinates
 from .hole_blending import blend_holes
 from .holes import Hole, HoleSettings, find_hole_groups, find_holes
 
@@ -70,6 +70,7 @@ class UnwrapResult:
     holes: tuple[Hole, ...] = ()
     message: str = ""
     elapsed_ms: float = 0.0
+    camera_bounds: tuple[tuple[float, float, float, float], ...] = ()
 
 
 @dataclass(frozen=True)
@@ -158,6 +159,7 @@ class TubeUnwrapper:
             return failure(UnwrapStatus.INVALID_INPUT, "Expected four camera frames in recipe order")
         gray = []
         geometries = []
+        cameras = []
         nominal_height, width = self.recipe.input_shape
         min_height, max_height = self.recipe.input_height_range or (nominal_height, nominal_height)
         for index, (frame, camera) in enumerate(zip(frames, self.recipe.cameras), 1):
@@ -168,20 +170,22 @@ class TubeUnwrapper:
                 return failure(UnwrapStatus.INVALID_INPUT, f"Camera {index}: unexpected shape or pixel format")
             gray.append(frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
             try:
-                geometries.append(locate_body(gray[-1], camera))
+                body, adjusted = locate_body_with_fallback(gray[-1], camera)
             except ValueError as exc:
                 return failure(UnwrapStatus.REVIEW, f"Camera {index}: {exc}")
+            geometries.append(body)
+            cameras.append(adjusted)
 
         r = self.recipe
 
         def project(camera_index: int, points: np.ndarray) -> tuple[np.ndarray, float]:
-            return project_contour(points, geometries[camera_index], r.cameras[camera_index],
+            return project_contour(points, geometries[camera_index], cameras[camera_index],
                                    r.width, r.height, r.trim_px)
 
         holes, alternates = find_hole_groups(gray, geometries, project, r.width, r.height,
                                              settings=r.hole_settings)
         strips = []
-        for i, (frame, body, camera, view) in enumerate(zip(gray, geometries, r.cameras, self._views), 1):
+        for i, (frame, body, camera, view) in enumerate(zip(gray, geometries, cameras, self._views), 1):
             strip = np.empty((r.height, view.columns.size), dtype=np.uint8)
             for start in range(0, r.height, 256):
                 rows = slice(start, start + 256)
@@ -193,8 +197,9 @@ class TubeUnwrapper:
             strips.append(strip)
         image, source = self._assemble(strips, holes, alternates)
         valid = np.ones_like(image, dtype=bool)
+        camera_bounds = tuple((c.left, c.right, c.top, c.bottom) for c in cameras)
         return UnwrapResult(UnwrapStatus.OK, image, valid, source, holes,
-                            elapsed_ms=(perf_counter()-started)*1000)
+                            elapsed_ms=(perf_counter()-started)*1000, camera_bounds=camera_bounds)
 
     def _assemble(
         self, strips: list[np.ndarray], holes: tuple[Hole, ...],

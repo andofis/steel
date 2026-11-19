@@ -159,7 +159,7 @@ class TubeUnwrapBridge:
                 input_shapes=tuple(shapes),
             )
 
-        calibration_bounds = tuple(
+        calibration_bounds = result.camera_bounds or tuple(
             (float(camera.left), float(camera.right), float(camera.top), float(camera.bottom))
             for camera in recipe.cameras
         )
