@@ -84,8 +84,11 @@ def _raw_contours(
     cv2.bitwise_and(dark, interior, dst=dark)
     contours, _ = cv2.findContours(dark, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
+    min_area = 0.30 * settings.min_diameter_px**2
     accepted = []
     for contour in contours:
+        if len(contour) < 3:
+            continue
         x, y, w, h = cv2.boundingRect(contour)
         if min(w, h) < settings.min_diameter_px or y == 0 or y + h >= len(rows):
             continue
@@ -95,8 +98,10 @@ def _raw_contours(
         if np.any((cols <= left[bounds_rows] + 1) | (cols >= right[bounds_rows] - 1)):
             continue
         area = cv2.contourArea(contour)
+        if area < min_area:
+            continue
         perimeter = cv2.arcLength(contour, True)
-        if area < 0.30 * settings.min_diameter_px**2 or perimeter == 0:
+        if perimeter == 0:
             continue
         if 4 * np.pi * area / perimeter**2 < settings.minimum_compactness:
             continue

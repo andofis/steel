@@ -3,6 +3,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
+from tube_unwrap.geometry import CameraCalibration, locate_body
 from tube_unwrap_bridge import TubeUnwrapBridge
 
 
@@ -53,6 +54,17 @@ class TubeLocalizationTest(unittest.TestCase):
                 self.assertAlmostEqual(result.bounds[0][0], left, delta=2)
                 self.assertAlmostEqual(result.bounds[0][1], right, delta=2)
                 self.assertEqual(int(np.median(result.image[:, :100])), 54)
+
+    def test_side_edge_follows_the_tube_past_a_strong_internal_stripe(self):
+        frame = np.full((2000, 820), 40, dtype=np.uint8)
+        frame[210:1700, 230:650] = 60
+        frame[720:1050, 580:620] = 5
+
+        right = locate_body(frame, CameraCalibration(230, 650, 210, 1700, 0, search_x=100))
+        left = locate_body(frame[:, ::-1], CameraCalibration(170, 590, 210, 1700, 0, search_x=100))
+
+        np.testing.assert_allclose(right.right[820:950], 649, atol=2)
+        np.testing.assert_allclose(left.left[820:950], 170, atol=2)
 
     def test_refuses_to_unwrap_when_one_camera_lacks_a_complete_tube(self):
         cases = (

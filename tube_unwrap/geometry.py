@@ -57,6 +57,33 @@ def _gradient(image: np.ndarray, dx: int, dy: int) -> np.ndarray:
     return cv2.Sobel(blurred, cv2.CV_16S, dx, dy, ksize=3)
 
 
+def _restore_outer_edge(
+    points: np.ndarray, gradient: np.ndarray, persistent: np.ndarray, sign: int,
+    persistent_floor: float, strength_floor: float,
+) -> None:
+    # In signed coordinates, a short jump into the tube is a peak. Use the
+    # surrounding edge as a search center only where both shoulders are visible.
+    radius = 150
+    if len(points) <= 2 * radius or np.ptp(points) < 30:
+        return
+    signed = points * sign
+    envelope = cv2.morphologyEx(
+        signed[:, None], cv2.MORPH_OPEN, np.ones((2 * radius + 1, 1), dtype=np.uint8),
+    ).ravel()
+    displaced = np.flatnonzero(signed[radius:-radius] - envelope[radius:-radius] >= 30) + radius
+    if displaced.size == 0:
+        return
+
+    centers = np.rint(envelope[displaced] * sign).astype(np.intp)
+    columns = np.clip(centers[:, None] + np.arange(-5, 6), 2, gradient.shape[1] - 3)
+    supported = persistent[displaced[:, None], columns] >= persistent_floor
+    scores = np.where(supported, gradient[displaced[:, None], columns], np.iinfo(gradient.dtype).min)
+    best = scores.argmax(axis=1)
+    row_indices = np.arange(len(displaced))
+    proven = scores[row_indices, best] >= strength_floor
+    points[displaced[proven]] = columns[row_indices, best][proven]
+
+
 def _side_boundary(
     image: np.ndarray, rows: np.ndarray, x: int, span: int, sign: int, *, edge_gain: float = 1.0,
 ) -> np.ndarray:
@@ -68,7 +95,8 @@ def _side_boundary(
     persistent = gradient.astype(np.float32)
     for _ in range(3):
         cv2.blur(persistent, (1, 133), dst=persistent)
-    threshold = np.maximum(25 / edge_gain, persistent.max(axis=1, keepdims=True) * 0.44)
+    persistent_floor, strength_floor = 25 / edge_gain, 40 / edge_gain
+    threshold = np.maximum(persistent_floor, persistent.max(axis=1, keepdims=True) * 0.44)
     candidates = persistent >= threshold
     candidates[:, :2] = False
     candidates[:, 2 * span - 1:] = False
@@ -83,11 +111,12 @@ def _side_boundary(
     best = nearby_gradients.argmax(axis=1)
     peaks = nearby[row_indices, best]
     strengths = nearby_gradients[row_indices, best]
-    usable = has_edge & (strengths >= 40 / edge_gain) & (peaks > 1) & (peaks < 2 * span - 1)
+    usable = has_edge & (strengths >= strength_floor) & (peaks > 1) & (peaks < 2 * span - 1)
     if usable.mean() < 0.70:
         raise ValueError("Tube side edge is weak or outside the calibrated search window")
 
     points = np.interp(rows, rows[usable], peaks[usable]).astype(np.float32)
+    _restore_outer_edge(points, gradient, persistent, sign, persistent_floor, strength_floor)
     points = cv2.medianBlur(np.rint(points).astype(np.uint16)[:, None], 5)
     smoothed = cv2.GaussianBlur(points.astype(np.float32), (1, 111), 18.5).ravel()
     return np.interp(np.arange(image.shape[0]), rows, smoothed + start).astype(np.float32)
