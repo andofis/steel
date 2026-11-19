@@ -58,7 +58,7 @@ def _gradient(image: np.ndarray, dx: int, dy: int) -> np.ndarray:
 
 
 def _side_boundary(
-    image: np.ndarray, rows: np.ndarray, x: int, span: int, sign: int,
+    image: np.ndarray, rows: np.ndarray, x: int, span: int, sign: int, *, edge_gain: float = 1.0,
 ) -> np.ndarray:
     start = x - span
     region = image[rows[0]-3:rows[-1]+4, start-3:x+span+4]
@@ -68,18 +68,22 @@ def _side_boundary(
     persistent = gradient.astype(np.float32)
     for _ in range(3):
         cv2.blur(persistent, (1, 133), dst=persistent)
-    threshold = np.maximum(25, persistent.max(axis=1, keepdims=True) * 0.44)
-    columns = np.arange(gradient.shape[1])
-    candidates = (persistent >= threshold) & (columns > 1) & (columns < 2 * span - 1)
-    has_edge = candidates.any(axis=1)
+    threshold = np.maximum(25 / edge_gain, persistent.max(axis=1, keepdims=True) * 0.44)
+    candidates = persistent >= threshold
+    candidates[:, :2] = False
+    candidates[:, 2 * span - 1:] = False
     if sign > 0:
         outer = candidates.argmax(axis=1)
     else:
         outer = gradient.shape[1] - 1 - candidates[:, ::-1].argmax(axis=1)
-    narrow = np.abs(columns - outer[:, None]) <= 5
-    peaks = np.where(narrow, gradient, np.iinfo(gradient.dtype).min).argmax(axis=1)
-    strengths = gradient[np.arange(len(rows)), peaks]
-    usable = has_edge & (strengths >= 40) & (peaks > 1) & (peaks < 2 * span - 1)
+    row_indices = np.arange(len(rows))
+    has_edge = candidates[row_indices, outer]
+    nearby = np.clip(outer[:, None] + np.arange(-5, 6), 0, gradient.shape[1] - 1)
+    nearby_gradients = gradient[row_indices[:, None], nearby]
+    best = nearby_gradients.argmax(axis=1)
+    peaks = nearby[row_indices, best]
+    strengths = nearby_gradients[row_indices, best]
+    usable = has_edge & (strengths >= 40 / edge_gain) & (peaks > 1) & (peaks < 2 * span - 1)
     if usable.mean() < 0.70:
         raise ValueError("Tube side edge is weak or outside the calibrated search window")
 
@@ -117,7 +121,7 @@ def _end_curve(
     return np.polynomial.polynomial.polyfit(x[usable], positions[usable], 3).astype(np.float32)
 
 
-def locate_body(image: np.ndarray, calibration: CameraCalibration) -> BodyGeometry:
+def locate_body(image: np.ndarray, calibration: CameraCalibration, *, edge_gain: float = 1.0) -> BodyGeometry:
     """Fit the side and end profiles. Raise ValueError if a profile is unreliable."""
     if image.ndim != 2 or image.dtype != np.uint8:
         raise ValueError("Tube localization requires a 2-D uint8 image")
@@ -131,8 +135,8 @@ def locate_body(image: np.ndarray, calibration: CameraCalibration) -> BodyGeomet
         raise ValueError("Calibrated silhouette is too small for the configured search windows")
 
     rows = np.arange(yt + sy + 30, yb - sy - 30)
-    left = _side_boundary(image, rows, xl, sx, 1)
-    right = _side_boundary(image, rows, xr, sx, -1)
+    left = _side_boundary(image, rows, xl, sx, 1, edge_gain=edge_gain)
+    right = _side_boundary(image, rows, xr, sx, -1, edge_gain=edge_gain)
     widths = (right - left)[rows]
     if np.mean((0.8 * (xr - xl) <= widths) & (widths <= 1.2 * (xr - xl))) < 0.95:
         raise ValueError("Observed tube width is inconsistent with its calibration")
@@ -151,7 +155,9 @@ def locate_body(image: np.ndarray, calibration: CameraCalibration) -> BodyGeomet
                         top_curve, bottom_curve)
 
 
-def _recenter_side_search(image: np.ndarray, calibration: CameraCalibration) -> CameraCalibration:
+def _recenter_side_search(
+    image: np.ndarray, calibration: CameraCalibration, *, edge_gain: float,
+) -> CameraCalibration:
     inset = calibration.search_y + 30
     start = round(calibration.top) + inset
     stop = round(calibration.bottom) - inset
@@ -167,13 +173,13 @@ def _recenter_side_search(image: np.ndarray, calibration: CameraCalibration) -> 
     gradient = cv2.Sobel(sampled, cv2.CV_16S, 1, 0, ksize=3)[:, margin:-margin]
     profile = np.median(gradient, axis=0)
     left, right = int(profile.argmax()), int(profile.argmin())
-    if right - left < 35 or profile[left] < 25 or profile[right] > -25:
+    if right - left < 35 or profile[left] < 25 / edge_gain or profile[right] > -25 / edge_gain:
         # A slanted edge can be strong in each row but weak at any fixed column.
         left_peaks, right_peaks = gradient.argmax(axis=1), gradient.argmin(axis=1)
         samples = np.arange(len(rows))
         usable = ((right_peaks - left_peaks >= 35)
-                  & (gradient[samples, left_peaks] >= 40)
-                  & (gradient[samples, right_peaks] <= -40))
+                  & (gradient[samples, left_peaks] >= 40 / edge_gain)
+                  & (gradient[samples, right_peaks] <= -40 / edge_gain))
         if usable.mean() < 0.70:
             raise ValueError("Could not find two persistent tube side edges")
         left = round(float(np.median(left_peaks[usable])))
@@ -188,15 +194,17 @@ def _recenter_side_search(image: np.ndarray, calibration: CameraCalibration) -> 
 def locate_body_with_fallback(
     image: np.ndarray, calibration: CameraCalibration,
 ) -> tuple[BodyGeometry, CameraCalibration]:
-    """Refit with new side-edge seeds when the calibrated search fails."""
-    try:
-        return locate_body(image, calibration), calibration
-    except ValueError as calibrated_error:
-        try:
-            adjusted = _recenter_side_search(image, calibration)
-            return locate_body(image, adjusted), adjusted
-        except ValueError as adaptive_error:
-            raise ValueError(f"{calibrated_error}; automatic side search failed: {adaptive_error}") from adaptive_error
+    """Try calibrated and recentered side searches, then retry for weak edges."""
+    errors = []
+    for edge_gain in (1.0, 2.0):
+        for recenter in (False, True):
+            try:
+                adjusted = (_recenter_side_search(image, calibration, edge_gain=edge_gain)
+                            if recenter else calibration)
+                return locate_body(image, adjusted, edge_gain=edge_gain), adjusted
+            except ValueError as error:
+                errors.append(str(error))
+    raise ValueError(f"{errors[0]}; automatic side search failed: {errors[-1]}")
 
 
 def _row_profiles(
@@ -211,8 +219,13 @@ def _row_profiles(
 
 
 def _evaluate_curve(coordinate: np.ndarray, coefficients: np.ndarray) -> np.ndarray:
-    return ((coefficients[3] * coordinate + coefficients[2]) * coordinate
-            + coefficients[1]) * coordinate + coefficients[0]
+    result = coefficients[3] * coordinate
+    result += coefficients[2]
+    result *= coordinate
+    result += coefficients[1]
+    result *= coordinate
+    result += coefficients[0]
+    return result
 
 
 def source_coordinates(
@@ -226,9 +239,12 @@ def source_coordinates(
     row_fraction = np.asarray(output_rows, dtype=np.float32)
     ratios = np.asarray(projected_ratio, dtype=np.float32)
     center, radius = _row_profiles(body, row_fraction, trim)
-    map_x = center[:, None] + radius[:, None] * ratios[None, :]
-    normalized_x = (map_x - calibration.center) / calibration.radius
-    start = _evaluate_curve(normalized_x, body.top_curve) + trim
+    map_x = radius[:, None] * ratios[None, :]
+    map_x += center[:, None]
+    normalized_x = map_x - calibration.center
+    normalized_x /= calibration.radius
+    start = _evaluate_curve(normalized_x, body.top_curve)
+    start += trim
     map_y = _evaluate_curve(normalized_x, body.bottom_curve)
     map_y -= trim
     map_y -= start

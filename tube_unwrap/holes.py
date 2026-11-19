@@ -172,10 +172,11 @@ def find_hole_groups(
         for other, duplicates in selected:
             if hole.camera == other.camera:
                 continue
-            dx = abs((hole.x - other.x + width / 2) % width - width / 2)
             dy = abs(hole.y - other.y)
-            if (dx <= min(settings.merge_tolerance_px, 0.35 * min(hole.width, other.width))
-                    and dy <= min(settings.merge_tolerance_px, 0.35 * min(hole.height, other.height))):
+            if dy > min(settings.merge_tolerance_px, 0.35 * min(hole.height, other.height)):
+                continue
+            dx = abs((hole.x - other.x + width / 2) % width - width / 2)
+            if dx <= min(settings.merge_tolerance_px, 0.35 * min(hole.width, other.width)):
                 duplicates.append(hole)
                 break
         else:

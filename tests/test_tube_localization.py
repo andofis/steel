@@ -40,6 +40,20 @@ class TubeLocalizationTest(unittest.TestCase):
 
         self.assertTrue(result.ok, result.message)
 
+    def test_unwraps_a_low_contrast_tube_within_or_outside_calibrated_windows(self):
+        frame = self.frames[0]
+        for left, right in ((507, 997), (613, 1010)):
+            with self.subTest(left=left, right=right):
+                frame.fill(40)
+                frame[210:1700, left:right] = 54
+
+                result = self.unwrap()
+
+                self.assertTrue(result.ok, result.message)
+                self.assertAlmostEqual(result.bounds[0][0], left, delta=2)
+                self.assertAlmostEqual(result.bounds[0][1], right, delta=2)
+                self.assertEqual(int(np.median(result.image[:, :100])), 54)
+
     def test_refuses_to_unwrap_when_one_camera_lacks_a_complete_tube(self):
         cases = (
             (),

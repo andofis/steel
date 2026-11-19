@@ -38,7 +38,7 @@ def _estimate_vertical_bounds(image: np.ndarray) -> Tuple[int, int]:
     height = int(image.shape[0])
     if height < 64:
         raise ValueError("图像高度过小，无法定位钢管端部")
-    profile = image.mean(axis=1, dtype=np.float64)
+    profile = cv2.reduce(image, 1, cv2.REDUCE_SUM, dtype=cv2.CV_64F).ravel() / image.shape[1]
     smooth = np.convolve(profile, np.ones(21, dtype=np.float64) / 21.0, mode="same")
     gradient = np.abs(np.diff(smooth))
     if gradient.size < 32:
@@ -125,7 +125,8 @@ class TubeUnwrapBridge:
         for slot in range(4):
             packet = packets[slot]
             expected = int(packet.width) * int(packet.height)
-            if expected <= 0 or len(packet.data) < expected:
+            data = packet.data
+            if expected <= 0 or len(data) < expected:
                 return BridgeResult(
                     status=UnwrapStatus.INVALID_INPUT.value,
                     image=None,
@@ -135,9 +136,11 @@ class TubeUnwrapBridge:
                     bounds=(),
                     input_shapes=tuple(shapes),
                 )
-            image = np.frombuffer(packet.data, dtype=np.uint8, count=expected).reshape(
+            image = np.frombuffer(data, dtype=np.uint8, count=expected).reshape(
                 int(packet.height), int(packet.width)
-            ).copy()
+            )
+            if not isinstance(data, bytes):
+                image = image.copy()
             image = self._apply_contrast(slot, image)
             arrays.append(image)
             shapes.append((int(packet.width), int(packet.height)))
