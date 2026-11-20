@@ -50,6 +50,8 @@ class BodyGeometry:
     bottom: float
     top_curve: np.ndarray
     bottom_curve: np.ndarray
+    # Center and radius used for projection when the measured width is unstable.
+    projection_profile: tuple[np.ndarray, np.ndarray] | None = None
 
 
 def _gradient(image: np.ndarray, dx: int, dy: int) -> np.ndarray:
@@ -57,31 +59,79 @@ def _gradient(image: np.ndarray, dx: int, dy: int) -> np.ndarray:
     return cv2.Sobel(blurred, cv2.CV_16S, dx, dy, ksize=3)
 
 
+def _restore_supported_runs(
+    points: np.ndarray, reference: np.ndarray, displaced: np.ndarray, recovered: np.ndarray,
+    gradient: np.ndarray, persistent: np.ndarray, floors: tuple[float, float], *, min_rows: int,
+) -> None:
+    anchors = np.flatnonzero(np.abs(points - reference) <= 7)
+    columns = np.rint(points[anchors]).astype(np.intp)
+    anchor_signal = np.column_stack((gradient[anchors, columns], persistent[anchors, columns]))
+    validated = (anchor_signal >= floors).all(axis=1)
+    anchors, anchor_signal = anchors[validated], anchor_signal[validated]
+    signal = np.column_stack((gradient[displaced, recovered], persistent[displaced, recovered]))
+    half_floors = np.asarray(floors) * 0.5
+    splits = np.flatnonzero(np.diff(displaced) > 1) + 1
+    for run in np.split(np.arange(len(displaced)), splits):
+        if run.size < min_rows:
+            continue
+        start, stop = displaced[run[0]], displaced[run[-1]] + 1
+        before, first, last, after = np.searchsorted(anchors, (start-256, start, stop, stop+256))
+        if min(first-before, after-last) < 8:
+            continue
+        # A weak line next to the tube must resemble the confirmed edge on both sides.
+        shoulder = np.minimum(np.median(anchor_signal[before:first], axis=0),
+                              np.median(anchor_signal[last:after], axis=0))
+        threshold = np.maximum(half_floors, 0.45 * shoulder)
+        matched = run[(signal[run] >= threshold).all(axis=1)]
+        if matched.size < max(2, 0.8 * run.size):
+            continue
+        points[displaced[matched]] = recovered[matched]
+        # Bridge brief losses of contrast between verified samples of the same edge.
+        gaps = np.diff(matched)
+        for index in np.flatnonzero((gaps > 1) & (gaps <= 25)):
+            start, stop = matched[index:index+2]
+            points[displaced[start+1:stop]] = np.linspace(
+                recovered[start], recovered[stop], stop-start+1,
+            )[1:-1]
+
+
 def _restore_outer_edge(
     points: np.ndarray, gradient: np.ndarray, persistent: np.ndarray, sign: int,
     persistent_floor: float, strength_floor: float,
 ) -> None:
-    # In signed coordinates, a short jump into the tube is a peak. Use the
-    # surrounding edge as a search center only where both shoulders are visible.
-    radius = 150
-    if len(points) <= 2 * radius or np.ptp(points) < 30:
+    extent = np.ptp(points)
+    if len(points) <= 300 or extent < 10:
         return
-    signed = points * sign
-    envelope = cv2.morphologyEx(
-        signed[:, None], cv2.MORPH_OPEN, np.ones((2 * radius + 1, 1), dtype=np.uint8),
-    ).ravel()
-    displaced = np.flatnonzero(signed[radius:-radius] - envelope[radius:-radius] >= 30) + radius
-    if displaced.size == 0:
-        return
+    # Signed inward jumps are peaks. Use a wider longitudinal window for a
+    # stripe that suppressed the outer edge for longer than the short pass.
+    long_radius = max(300, len(points) // 12)
+    for radius, jump, search, signal_fraction, min_rows in (
+        (150, 30, 5, 1.0, 1), (long_radius, 24, 7, 0.5, 1),
+        (long_radius, 10, 5, 0.5, 64),
+    ):
+        if len(points) <= 2 * radius or extent < jump:
+            continue
+        signed = points * sign
+        envelope = cv2.morphologyEx(
+            signed[None, :], cv2.MORPH_OPEN, np.ones((1, 2 * radius + 1), dtype=np.uint8),
+        ).ravel()
+        # Both shoulders of the jump must lie on the imaged body.
+        displaced = np.flatnonzero(signed[radius:-radius] - envelope[radius:-radius] >= jump) + radius
+        if displaced.size == 0:
+            continue
 
-    centers = np.rint(envelope[displaced] * sign).astype(np.intp)
-    columns = np.clip(centers[:, None] + np.arange(-5, 6), 2, gradient.shape[1] - 3)
-    supported = persistent[displaced[:, None], columns] >= persistent_floor
-    scores = np.where(supported, gradient[displaced[:, None], columns], np.iinfo(gradient.dtype).min)
-    best = scores.argmax(axis=1)
-    row_indices = np.arange(len(displaced))
-    proven = scores[row_indices, best] >= strength_floor
-    points[displaced[proven]] = columns[row_indices, best][proven]
+        centers = np.rint(envelope[displaced] * sign).astype(np.intp)
+        columns = np.clip(centers[:, None] + np.arange(-search, search + 1), 2, gradient.shape[1] - 3)
+        supported = persistent[displaced[:, None], columns] >= persistent_floor * signal_fraction
+        scores = np.where(supported, gradient[displaced[:, None], columns], np.iinfo(gradient.dtype).min)
+        best = scores.argmax(axis=1)
+        row_indices = np.arange(len(displaced))
+        proven = scores[row_indices, best] >= strength_floor * signal_fraction
+        recovered = columns[row_indices, best]
+        if signal_fraction == 1.0:
+            points[displaced[proven]] = recovered[proven]
+        _restore_supported_runs(points, envelope * sign, displaced, recovered,
+                                gradient, persistent, (strength_floor, persistent_floor), min_rows=min_rows)
 
 
 def _side_boundary(
@@ -150,6 +200,42 @@ def _end_curve(
     return np.polynomial.polynomial.polyfit(x[usable], positions[usable], 3).astype(np.float32)
 
 
+def _axial_trend(values: np.ndarray, quantile: float = 0.5) -> np.ndarray:
+    """Estimate slow changes along the tube without following local edge dropouts."""
+    count = len(values)
+    radius = max(16, count // 12)
+    knots = np.linspace(0, count - 1, min(25, count), dtype=np.intp)
+    padded = np.pad(values, (radius, radius), mode="edge")
+    samples = [np.quantile(padded[k:k + 2 * radius + 1], quantile) for k in knots]
+    return np.interp(np.arange(count), knots, samples).astype(np.float32)
+
+
+def _fit_projection_profile(
+    left: np.ndarray, right: np.ndarray, rows: np.ndarray,
+) -> tuple[np.ndarray, np.ndarray] | None:
+    width = right[rows] - left[rows]
+    # Local edge dropouts mostly shrink the observed width. Use the wider
+    # part of the local distribution without relying on extreme samples.
+    expected_width = _axial_trend(width, 0.65)
+    tolerance = max(4.0, 0.02 * float(np.median(expected_width)))
+    if np.max(np.abs(width - expected_width)) < tolerance:
+        return None
+
+    row_axis = np.arange(len(left))
+    expected_center = _axial_trend((left[rows] + right[rows]) * 0.5)
+    prior = np.interp(row_axis, rows, expected_center).astype(np.float32)
+    radius = np.interp(row_axis, rows, expected_width * 0.5).astype(np.float32)
+    left_center, right_center = left + radius, right - radius
+    # Each side proposes a center using the same scale. When one side wanders,
+    # favor the one that follows the axial trend. Two agreeing sides retain motion.
+    left_weight = 1 / (1 + ((left_center - prior) * 0.5)**4)
+    right_weight = 1 / (1 + ((right_center - prior) * 0.5)**4)
+    center = (left_center * left_weight + right_center * right_weight) / (left_weight + right_weight)
+    center.flags.writeable = False
+    radius.flags.writeable = False
+    return center, radius
+
+
 def locate_body(image: np.ndarray, calibration: CameraCalibration, *, edge_gain: float = 1.0) -> BodyGeometry:
     """Fit the side and end profiles. Raise ValueError if a profile is unreliable."""
     if image.ndim != 2 or image.dtype != np.uint8:
@@ -180,8 +266,9 @@ def locate_body(image: np.ndarray, calibration: CameraCalibration, *, edge_gain:
 
     for array in (left, right, top_curve, bottom_curve):
         array.flags.writeable = False
+    projection = _fit_projection_profile(left, right, rows)
     return BodyGeometry(left, right, float(top_curve[0]), float(bottom_curve[0]),
-                        top_curve, bottom_curve)
+                        top_curve, bottom_curve, projection)
 
 
 def _recenter_side_search(
@@ -242,6 +329,10 @@ def _row_profiles(
     y = body.top + trim + row_fraction * (body.bottom - body.top - 2 * trim)
     lower = np.clip(y.astype(np.intp), 0, len(body.left) - 2)
     fraction = y - lower.astype(np.float32)
+    if body.projection_profile is not None:
+        center, radius = body.projection_profile
+        return (center[lower] + fraction * (center[lower + 1] - center[lower]),
+                radius[lower] + fraction * (radius[lower + 1] - radius[lower]))
     left = body.left[lower] + fraction * (body.left[lower + 1] - body.left[lower])
     right = body.right[lower] + fraction * (body.right[lower + 1] - body.right[lower])
     return (left + right) * 0.5, (right - left) * 0.5

@@ -3,7 +3,7 @@ from types import SimpleNamespace
 
 import numpy as np
 
-from tube_unwrap.geometry import CameraCalibration, locate_body
+from tube_unwrap.geometry import CameraCalibration, locate_body, project_contour, source_coordinates
 from tube_unwrap_bridge import TubeUnwrapBridge
 
 
@@ -65,6 +65,59 @@ class TubeLocalizationTest(unittest.TestCase):
 
         np.testing.assert_allclose(right.right[820:950], 649, atol=2)
         np.testing.assert_allclose(left.left[820:950], 170, atol=2)
+
+    def test_side_edge_recovers_a_long_weak_edge_and_preserves_a_real_notch(self):
+        frame = np.full((5600, 820), 40, dtype=np.uint8)
+        calibration = CameraCalibration(230, 650, 210, 5350, 0, search_x=100)
+        for tube, outer, inner, expected_right in ((60, 50, 5, 649), (60, 40, 40, 579), (80, 50, 50, 579)):
+            with self.subTest(tube=tube, outer=outer, inner=inner):
+                frame[210:5350, 230:650] = tube
+                frame[2200:2800, 580:650] = outer
+                frame[2200:2800, 580:610] = inner
+
+                body = locate_body(frame, calibration)
+
+                np.testing.assert_allclose(body.right[2330:2670], expected_right, atol=2)
+
+    def test_side_edge_recovers_a_sustained_small_inward_shift(self):
+        frame = np.full((5600, 820), 40, dtype=np.uint8)
+        frame[210:5350, 230:650] = 60
+        frame[2200:2800, 632:642] = 5
+
+        body = locate_body(frame, CameraCalibration(230, 650, 210, 5350, 0, search_x=100))
+
+        np.testing.assert_allclose(body.right[2330:2670], 649, atol=2)
+
+    def test_side_edge_bridges_a_short_gap_between_verified_samples(self):
+        frame = np.full((2000, 820), 40, dtype=np.uint8)
+        frame[210:1700, 230:650] = 60
+        frame[720:1050, 580:620] = 5
+        frame[875:888, 635:650] = 40
+
+        body = locate_body(frame, CameraCalibration(230, 650, 210, 1700, 0, search_x=100))
+
+        np.testing.assert_allclose(body.right[865:898], 649, atol=2)
+
+    def test_projection_keeps_scale_and_pipe_motion_through_a_one_sided_width_drop(self):
+        frame = np.full((2600, 820), 40, dtype=np.uint8)
+        for row in range(210, 2350):
+            shift = (row - 210) // 75
+            right = 610 if 820 <= row < 960 else 650
+            frame[row, 230 + shift:right + shift] = 100
+        calibration = CameraCalibration(230, 650, 210, 2350, 500, search_x=100)
+        body = locate_body(frame, calibration)
+        trim = 5.0
+        rows = np.array([700, 890, 1150])
+        fractions = (rows - body.top - trim) / (body.bottom - body.top - 2 * trim)
+
+        map_x, map_y = source_coordinates(body, calibration, np.array([0.0, 0.6]), fractions, trim)
+        contour, _ = project_contour(np.column_stack((map_x[:, 0], map_y[:, 0])),
+                                     body, calibration, 1536, 10000, trim)
+
+        self.assertLess(body.right[890] - body.left[890], 390)
+        np.testing.assert_allclose(map_x[:, 0], 439.5 + (rows - 210) // 75, atol=2)
+        np.testing.assert_allclose(map_x[:, 1] - map_x[:, 0], 126, atol=2)
+        np.testing.assert_allclose(contour[:, 0], 500, atol=0.1)
 
     def test_refuses_to_unwrap_when_one_camera_lacks_a_complete_tube(self):
         cases = (
