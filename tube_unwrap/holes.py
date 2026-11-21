@@ -58,6 +58,10 @@ class Hole:
     camera: int
     contour: tuple[tuple[float, float], ...]
 
+    def scaled(self, sx: float, sy: float) -> Hole:
+        return Hole(self.x * sx, self.y * sy, self.width * sx, self.height * sy, self.camera,
+                    tuple((x * sx, y * sy) for x, y in self.contour))
+
 
 def _raw_contours(
     frame: NDArray[np.uint8], geometry: _BodyGeometry, settings: HoleSettings

@@ -53,6 +53,8 @@ def replay(service, folder):
                 not (path.parent / "capture.json").is_file() or path.read_bytes() != png):
             raise RuntimeError(f"Incomplete replay: {folder}: {service.last_error}")
         image = cv2.imdecode(np.frombuffer(png, np.uint8), cv2.IMREAD_UNCHANGED)
+        if tuple(reversed(image.shape)) != service.unwrap_size:
+            raise RuntimeError(f"Unexpected output size: {image.shape}")
         timing = info["timeline"]["durations_ms"]
         return {"capture": folder.name, "unwrap_ms": timing["unwrap_algorithm"],
                 "available_ms": timing["result_ready_from_start"], "archive_ms": timing["pipeline_total"],
@@ -63,6 +65,8 @@ def main():
     parser = argparse.ArgumentParser(description="离线回放四路原图：测内存输入到展开、可取图和归档，不含现场收尾、浏览器或模型。")
     parser.add_argument("captures", type=Path, help="包含采集目录的文件夹")
     parser.add_argument("--limit", type=int, help="仅测前 N 组")
+    parser.add_argument("--size", nargs=2, metavar=("WIDTH", "HEIGHT"), type=int,
+                        help="按指定宽高直接展开，仅影响本次临时回放；默认使用配方原尺寸")
     args = parser.parse_args()
     if args.limit is not None and args.limit < 1:
         parser.error("--limit must be positive")
@@ -73,6 +77,12 @@ def main():
     with tempfile.TemporaryDirectory(prefix="steel-replay-") as scratch:
         service = ReplayService(scratch)
         try:
+            if args.size is not None:
+                try:
+                    service.set_unwrap_size(*args.size)
+                except ValueError as exc:
+                    parser.error(str(exc))
+            width, height = service.unwrap_size
             replay(service, folders[0])  # Warm-up, not included in statistics.
             rows = [replay(service, folder) for folder in folders]
         finally:
@@ -80,7 +90,8 @@ def main():
             service.preview_executor.shutdown(wait=True)
     metrics = {k: dict(zip(("p50", "p95", "max"), np.percentile([r[k] for r in rows], [50, 95, 100]).round(2)))
                for k in ("unwrap_ms", "available_ms", "archive_ms")}
-    print(json.dumps({"samples": len(rows), "milliseconds": metrics, "captures": rows}, indent=2))
+    print(json.dumps({"samples": len(rows), "output_size": {"width": width, "height": height},
+                      "milliseconds": metrics, "captures": rows}, indent=2))
 
 
 if __name__ == "__main__":

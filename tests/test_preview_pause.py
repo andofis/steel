@@ -152,7 +152,7 @@ class PreviewPauseTest(unittest.TestCase):
     def test_save_restores_preview_on_success_and_failure(self):
         service = self.service
 
-        def process(frames):
+        def process(frames, *, output_size):
             self.assertTrue(service.get_state()["preview_paused"])
             return SimpleNamespace(
                 ok=True, image=np.arange(16, dtype=np.uint8).reshape(4, 4),

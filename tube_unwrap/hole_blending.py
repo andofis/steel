@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from math import ceil
 
 import cv2
 import numpy as np
@@ -40,11 +41,14 @@ def _hole_polygons(hole: Hole, alternates: tuple[Hole, ...], width: int) -> list
 def _make_patch(
     image: np.ndarray, strip: np.ndarray, local_column: np.ndarray, primary: np.ndarray,
     seam_alpha: np.ndarray, hole: Hole, alternates: tuple[Hole, ...], dark_threshold: int,
+    output_scale: tuple[float, float],
 ) -> _Patch | None:
     height, width = image.shape
     polygons = _hole_polygons(hole, alternates, width)
     coordinates = np.concatenate(polygons)
-    pad = _GUARD_PX + _FEATHER_PX + 2
+    sx, sy = output_scale
+    margin = _GUARD_PX + _FEATHER_PX
+    pad = (ceil(sx * margin) + 2, ceil(sy * margin) + 2)
     x0, y0 = np.floor(coordinates.min(axis=0)).astype(int) - pad
     x1, y1 = np.ceil(coordinates.max(axis=0)).astype(int) + pad + 1
     y0, y1 = max(0, y0), min(height, y1)
@@ -71,16 +75,28 @@ def _make_patch(
         return _Patch(rows, cols, hole.camera, donor, opening, opening,
                       np.zeros_like(union), donor)
 
-    distance = cv2.distanceTransform(1 - union, cv2.DIST_L2, cv2.DIST_MASK_5)
-    protected = (distance <= _GUARD_PX) & valid[None, :]
+    # A custom grid can shrink the axial and circumferential directions differently.
+    # Measure the feather in square reference units on this small patch, not the full image.
+    wall = 1 - union
+    metric = max(sx, sy)
+    ph, pw = wall.shape
+    metric_size = (round(pw * metric / sx), round(ph * metric / sy))
+    if metric_size != (pw, ph):
+        wall = cv2.resize(wall, metric_size, interpolation=cv2.INTER_NEAREST)
+    distance = cv2.distanceTransform(wall, cv2.DIST_L2, cv2.DIST_MASK_5)
+    if metric_size != (pw, ph):
+        distance = cv2.resize(distance, (pw, ph), interpolation=cv2.INTER_LINEAR)
+        distance[union != 0] = 0
+    guard_px, feather_px = _GUARD_PX * metric, _FEATHER_PX * metric
+    protected = (distance <= guard_px) & valid[None, :]
 
-    feather = np.clip((distance - _GUARD_PX) / _FEATHER_PX, 0, 1)
+    feather = np.clip((distance - guard_px) / feather_px, 0, 1)
     weight = 1 - feather * feather * (3 - 2 * feather)
     if not valid.all():
         # A feather can extend beyond the camera strip. Fade it before that edge.
         available = cv2.distanceTransform(valid[None, :].astype(np.uint8), cv2.DIST_L1, 3)[0]
         clearance = np.maximum(available - 1, 0)
-        coverage = np.divide(clearance, clearance + feather * _FEATHER_PX,
+        coverage = np.divide(clearance, clearance + feather * (_FEATHER_PX * sx),
                              out=np.ones_like(weight), where=feather > 0)
         weight *= coverage
         weight[:, ~valid] = 0
@@ -90,7 +106,7 @@ def _make_patch(
                   & (donor >= dark_threshold) & (background >= dark_threshold)
                   & (donor < 250) & (background < 250))
     offset = 0.0
-    if np.count_nonzero(outer_wall) >= 16:
+    if np.count_nonzero(outer_wall) >= max(1, round(16 * sx * sy)):
         differences = background[outer_wall].astype(np.int16) - donor[outer_wall]
         offset = float(np.clip(np.median(differences), -_MAX_BRIGHTNESS_OFFSET, _MAX_BRIGHTNESS_OFFSET))
     adjusted = np.clip(donor + offset * feather, 0, 255)
@@ -102,13 +118,14 @@ def blend_holes(
     image: np.ndarray, source: np.ndarray, strips: list[np.ndarray],
     local_columns: tuple[np.ndarray, ...], primary: np.ndarray, seam_alpha: np.ndarray,
     holes: tuple[Hole, ...], alternate_contours: tuple[tuple[Hole, ...], ...], dark_threshold: int,
+    *, output_scale: tuple[float, float] = (1.0, 1.0),
 ) -> None:
     patches = []
     for index, hole in enumerate(holes):
         camera = hole.camera - 1
         alternates = alternate_contours[index] if alternate_contours else ()
         patch = _make_patch(image, strips[camera], local_columns[camera], primary, seam_alpha,
-                            hole, alternates, dark_threshold)
+                            hole, alternates, dark_threshold, output_scale)
         if patch is not None:
             patches.append(patch)
 

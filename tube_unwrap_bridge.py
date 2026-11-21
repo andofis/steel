@@ -14,6 +14,7 @@ import numpy as np
 
 from tube_unwrap import HoleSettings, Recipe, TubeUnwrapper, UnwrapStatus
 from tube_unwrap.geometry import CameraCalibration
+from unwrap_output import OutputSizes
 
 ROOT = Path(__file__).resolve().parent
 DEFAULT_RECIPE = ROOT / "tube_unwrap_recipe.json"
@@ -78,7 +79,14 @@ class TubeUnwrapBridge:
         lut = np.clip(np.rint((np.arange(256, dtype=np.float64) - offset) * gain + offset), 0, 255).astype(np.uint8)
         return cv2.LUT(image, lut)
 
-    def _build_recipe(self, frames: Sequence[np.ndarray], bounds: Sequence[Tuple[int, int]]) -> Recipe:
+    @property
+    def output_sizes(self) -> OutputSizes:
+        return OutputSizes(self.config.get("output_width", 1536), self.config.get("output_height", 10000))
+
+    def _build_recipe(self, frames: Sequence[np.ndarray], bounds: Sequence[Tuple[int, int]],
+                      output_size: tuple[int, int] | None = None) -> Recipe:
+        grid = self.output_sizes
+        out_w, out_h = grid.validate(*(grid.native if output_size is None else output_size))
         width = int(self.config["input_width"])
         heights = [int(frame.shape[0]) for frame in frames]
         nominal_height = max(heights)
@@ -93,7 +101,7 @@ class TubeUnwrapBridge:
                 right=float(camera_config["right"]),
                 top=float(top),
                 bottom=float(bottom),
-                phase=float(camera_config["phase"]),
+                phase=float(camera_config["phase"]),  # Phase is calibrated on the reference grid.
                 perspective=perspective,
                 search_x=search_x,
                 search_y=search_y,
@@ -102,15 +110,16 @@ class TubeUnwrapBridge:
             cameras=tuple(cameras),
             input_shape=(nominal_height, width),
             input_height_range=(minimum_height, nominal_height),
-            width=int(self.config.get("output_width", 1536)),
-            height=int(self.config.get("output_height", 10000)),
+            width=out_w,
+            height=out_h,
+            reference_size=grid.native,
             trim_px=float(self.config.get("trim_px", 5.0)),
-            blend_px=int(self.config.get("blend_px", 20)),
+            blend_px=round(self.config.get("blend_px", 20) * out_w / grid.width),
             max_view_deg=float(self.config.get("max_view_deg", 68.0)),
             hole_settings=HoleSettings(**self.config.get("hole_settings", {})),
         )
 
-    def process_packets(self, packets: Dict[int, Any]) -> BridgeResult:
+    def process_packets(self, packets: Dict[int, Any], *, output_size: tuple[int, int] | None = None) -> BridgeResult:
         if sorted(packets) != [0, 1, 2, 3]:
             return BridgeResult(
                 status=UnwrapStatus.INVALID_INPUT.value,
@@ -151,7 +160,7 @@ class TubeUnwrapBridge:
         try:
             for image in arrays:
                 bounds_list.append(_estimate_vertical_bounds(image))
-            recipe = self._build_recipe(arrays, bounds_list)
+            recipe = self._build_recipe(arrays, bounds_list, output_size)
             result = TubeUnwrapper(recipe).process(arrays, localization_executor=self.localization_executor)
         except Exception as exc:
             return BridgeResult(

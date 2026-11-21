@@ -246,6 +246,26 @@
             <p class="helper-text">增益使用相机 DigitalShift：0 dB 为原始亮度，+6 dB 约提高一倍，范围 -24～+24 dB。每台相机独立应用参数；展开结果由 tube_unwrap 模块生成。</p>
           </section>
 
+          <section class="control-section" aria-labelledby="unwrapSizeTitle">
+            <div class="control-section-title">
+              <span id="unwrapSizeTitle">展开图尺寸</span>
+              <span class="tiny-status" id="unwrapSizeActive">读取中</span>
+            </div>
+            <form id="unwrapSizeForm">
+              <label class="field">
+                <span>输出档位 <em>宽 × 高 · px</em></span>
+                <select id="unwrapSizePreset" disabled aria-describedby="unwrapSizeHint"></select>
+              </label>
+              <div class="field-row" id="unwrapCustomDims" hidden>
+                <label class="field"><span>宽 · 圆周 <em>px</em></span><input id="unwrapWidth" type="number" step="1" aria-describedby="unwrapSizeHint" required disabled></label>
+                <label class="field"><span>高 · 管长 <em>px</em></span><input id="unwrapHeight" type="number" step="1" aria-describedby="unwrapSizeHint" required disabled></label>
+              </div>
+              <p class="helper-text unwrap-size-hint" id="unwrapSizeHint"></p>
+              <button class="wide-button outlined" id="applyUnwrapSize" type="submit" disabled>保存展开尺寸</button>
+            </form>
+            <p class="helper-text">从下一根开始生效，四路原图不变。降档后请复核最小孔。</p>
+          </section>
+
           <section class="control-section">
             <div class="control-section-title">
               <span>钢管触发采集</span>

@@ -976,6 +976,11 @@ svg {
   gap: 8px;
 }
 
+#unwrapCustomDims[hidden] { display: none; }
+#unwrapSizeActive, #unwrapSizeForm .field > span { font-size: 10px; }
+#unwrapSizeForm select, #unwrapSizeForm input { font-size: 11px; }
+#unwrapSizeForm .unwrap-size-hint { margin: 0 0 10px; color: #9aadb3; }
+
 .wide-button {
   width: 100%;
   min-height: 33px;

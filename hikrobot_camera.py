@@ -21,9 +21,11 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
 from image_codec import create_unwrapped_image, encode_mono8_png, mono8_to_preview_bmp, write_encoded_png, write_mono8_png
+from unwrap_output import OutputSizes
 
 ROOT = Path(__file__).resolve().parent
 
@@ -465,7 +467,6 @@ class HikRobotService:
         camera_defaults = {key: value for key, value in DEFAULT_CONFIG.items() if key not in global_keys}
         self.camera_configs = [dict(camera_defaults) for _ in range(4)]
         self.settings_path = ROOT / "settings.json"
-        self._load_settings()
         self.group_frames: Dict[int, FramePacket] = {}
         self.group_started_at = 0.0
         self.group_timer: Optional[threading.Timer] = None
@@ -485,14 +486,19 @@ class HikRobotService:
         self.save_pipe_id = ""
         self.save_phase = "idle"
         self.save_started_at = 0.0
-        self._restore_latest_unwrapped()
+        self.output_sizes = OutputSizes()  # Also usable in capture-only installations.
         try:
             from tube_unwrap_bridge import TubeUnwrapBridge
             self.unwrap_bridge = TubeUnwrapBridge(localization_executor=self.preview_executor)
+            self.output_sizes = self.unwrap_bridge.output_sizes
             self._log("INFO", "钢管展开模块已加载: tube_unwrap 0.1.2")
         except Exception as exc:
+            self.unwrap_bridge = None
             self.unwrap_bridge_error = str(exc)
             self._log("ERROR", "钢管展开模块加载失败: %s" % exc)
+        self.unwrap_size = self.output_sizes.native
+        self._load_settings()
+        self._restore_latest_unwrapped()
         self._initialize_sdk()
 
     def _restore_latest_unwrapped(self) -> None:
@@ -549,6 +555,7 @@ class HikRobotService:
     def _load_settings(self) -> None:
         try:
             if not self.settings_path.exists():
+                self.unwrap_size = self.output_sizes.preset(3)  # New installation: balanced. Legacy settings keep native.
                 return
             saved = json.loads(self.settings_path.read_text(encoding="utf-8"))
             if not isinstance(saved, dict):
@@ -569,21 +576,59 @@ class HikRobotService:
                 if key in saved:
                     self.config[key] = saved[key]
             self.config.update(self.camera_configs[0])
+            if "unwrap_size" in saved:
+                size = saved["unwrap_size"]
+                try:
+                    if not isinstance(size, dict):
+                        raise ValueError("尺寸格式无效")
+                    self.unwrap_size = self.output_sizes.validate(size.get("width"), size.get("height"))
+                except ValueError as exc:
+                    self._log("WARN", f"已忽略无效的展开尺寸，使用配方原尺寸：{exc}")
         except Exception:
             pass
 
+    def _write_settings(self, size: tuple[int, int]) -> None:
+        payload = {
+            "output_dir": self.config.get("output_dir", "captures"),
+            "folder_prefix": self.config.get("folder_prefix", "pipe"),
+            "target_brightness": self.config.get("target_brightness", 82),
+            "stream_align_ms": self.config.get("stream_align_ms", 1000),
+            "unwrap_size": {"width": size[0], "height": size[1]},
+            "camera_configs": self.camera_configs,
+        }
+        text = json.dumps(payload, ensure_ascii=False, indent=2)
+        tmp = None
+        try:
+            with NamedTemporaryFile("w", dir=self.settings_path.parent, prefix=".settings-", suffix=".tmp",
+                                    delete=False, encoding="utf-8") as stream:
+                tmp = Path(stream.name)
+                stream.write(text)
+            tmp.replace(self.settings_path)
+        except OSError:
+            if tmp is not None:
+                try:
+                    tmp.unlink(missing_ok=True)
+                except OSError:
+                    pass
+            raise
+
     def save_settings(self) -> None:
         try:
-            payload = {
-                "output_dir": self.config.get("output_dir", "captures"),
-                "folder_prefix": self.config.get("folder_prefix", "pipe"),
-                "target_brightness": self.config.get("target_brightness", 82),
-                "stream_align_ms": self.config.get("stream_align_ms", 1000),
-                "camera_configs": self.camera_configs,
-            }
-            self.settings_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+            with self.lock:
+                self._write_settings(self.unwrap_size)
         except Exception as exc:
             self._log("WARN", "保存设置失败: %s" % exc)
+
+    def set_unwrap_size(self, width: int, height: int) -> dict:
+        size = self.output_sizes.validate(width, height)
+        with self.lock:
+            try:
+                self._write_settings(size)
+            except OSError as exc:
+                raise RuntimeError(f"展开尺寸未更改，无法保存设置：{exc}") from exc
+            self.unwrap_size = size  # Single immutable assignment, never restart a camera.
+        self._log("INFO", f"后续采集的展开尺寸：{width} × {height}；四路原图不变")
+        return self.get_state()
 
     def camera_config(self, slot: int) -> Dict[str, Any]:
         if slot < 0 or slot >= 4:
@@ -820,6 +865,7 @@ class HikRobotService:
                             "acquisition_started_at": now,
                             "acquisition_started_iso": format_timeline_timestamp(now),
                             "head_delay_ms": round(head_delay * 1000.0, 1),
+                            "unwrap_size": self.unwrap_size,
                             "events": [],
                         }
                         add_timeline_event(timeline, "acquisition_start", now)
@@ -898,6 +944,7 @@ class HikRobotService:
             "acquisition_started_iso": format_timeline_timestamp(session.get("started_at", time.time())),
             "events": [],
         })
+        timeline.setdefault("unwrap_size", self.unwrap_size)
         finalize_started = add_timeline_event(timeline, "finalize_started")
         timeline["finalize_reason"] = reason
         timeline["no_signal_ms"] = float(self.camera_configs[0].get("no_signal_ms", 80))
@@ -1171,7 +1218,7 @@ class HikRobotService:
             self.group_started_at = 0.0
             self.group_timer = None
         if frames:
-            self.executor.submit(self._save_pipe, frames)
+            self.executor.submit(self._save_pipe, frames, {"unwrap_size": self.unwrap_size})
 
     def _preview_finished(self, slot: int) -> None:
         with self.preview_condition:
@@ -1256,7 +1303,7 @@ class HikRobotService:
         add_stage("实时预览已暂停", "preview_paused", "preview_pause_requested", "等待预览结束 ", "仅暂停画面更新，相机采集继续")
         add_stage("开始生成展开图", "unwrap_started", "save_started", "保存准备 ")
         add_stage("展开算法完成", "unwrap_completed", "unwrap_started", "展开算法 ")
-        add_stage("全分辨率展开图已发布", "result_published", "unwrap_completed", "无损编码与发布 ", "浏览器此时可取图，尚未计入浏览器解码和显示")
+        add_stage("展开图已按所选尺寸发布", "result_published", "unwrap_completed", "无损编码与发布 ", "浏览器此时可取图，尚未计入浏览器解码和显示")
         add_stage("unwrapped.png 保存完成", "unwrapped_image_saved", "result_published", "展开图写盘 ")
         add_stage("展开图归档失败", "unwrapped_archive_failed", "result_published")
         add_stage("四张原图开始并行保存", "raw_save_started", "unwrapped_image_saved", "紧接着 ")
@@ -1297,6 +1344,7 @@ class HikRobotService:
         pipe_id = state_prefix + prefix[:80] + "_" + timestamp_for_path(moment)
         folder = self.output_dir(create=False) / pipe_id
         timeline = timeline or {}
+        output_size = timeline.get("unwrap_size", self.unwrap_size)
         timeline.setdefault("acquisition_started_at", first_frame_epoch)
         timeline.setdefault("acquisition_started_iso", format_timeline_timestamp(first_frame_epoch))
         timeline["durations_ms"] = dict(timeline.get("durations_ms") or {})
@@ -1316,7 +1364,7 @@ class HikRobotService:
                     unwrap_started_perf = time.perf_counter()
                     if self.unwrap_bridge is None:
                         raise RuntimeError(self.unwrap_bridge_error or "钢管展开模块不可用")
-                    bridge_result = self.unwrap_bridge.process_packets(frames)
+                    bridge_result = self.unwrap_bridge.process_packets(frames, output_size=output_size)
                     if not bridge_result.ok or bridge_result.image is None:
                         raise RuntimeError("%s: %s" % (bridge_result.status, bridge_result.message))
                     unwrap_completed = add_timeline_event(timeline, "unwrap_completed")
@@ -1474,6 +1522,7 @@ class HikRobotService:
                 "captured_at": moment.isoformat(timespec="milliseconds"),
                 "model": CAMERA_MODEL,
                 "parameters": {
+                    "unwrap_size": {"width": output_size[0], "height": output_size[1]},
                     "output_dir": self.config.get("output_dir", "captures"),
                     "folder_prefix": prefix,
                     "target_brightness": self.config.get("target_brightness", 82),
@@ -1690,6 +1739,7 @@ class HikRobotService:
                 "save_phase": self.save_phase,
                 "capture_history": list(self.capture_history[-200:]),
                 "unwrap_module_error": self.unwrap_bridge_error,
+                "unwrap_size": self.output_sizes.controls(self.unwrap_size),
                 "config": dict(self.camera_configs[0], output_dir=self.config.get("output_dir", "captures"), folder_prefix=self.config.get("folder_prefix", "pipe"), target_brightness=self.config.get("target_brightness", 82), stream_align_ms=self.config.get("stream_align_ms", 1000)),
                 "camera_configs": [dict(cfg) for cfg in self.camera_configs],
                 "output_path": str(self.output_dir(create=False)),

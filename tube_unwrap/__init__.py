@@ -37,6 +37,17 @@ class Recipe:
     max_view_deg: float = 68.0
     hole_settings: HoleSettings = field(default_factory=HoleSettings)
     input_height_range: tuple[int, int] | None = None
+    reference_size: tuple[int, int] | None = None  # Calibrated width/height, not an intermediate image.
+
+    @property
+    def reference_grid(self) -> tuple[int, int]:
+        return (self.width, self.height) if self.reference_size is None else self.reference_size
+
+    @property
+    def output_scale(self) -> tuple[float, float]:
+        w, h = self.reference_grid
+        # X is periodic; Y includes both end rows.
+        return self.width / w, (self.height - 1) / (h - 1)
 
     @classmethod
     def sample(cls) -> Recipe:
@@ -53,6 +64,7 @@ class Recipe:
             input_shape=tuple(data["input_shape"]),
             width=data["width"],
             height=data["height"],
+            reference_size=tuple(data["reference_size"]) if data.get("reference_size") is not None else None,
             trim_px=data.get("trim_px", 5.0),
             blend_px=data.get("blend_px", 12),
             max_view_deg=data.get("max_view_deg", 68.0),
@@ -95,7 +107,8 @@ class TubeUnwrapper:
         self.recipe = recipe
         self._validate_recipe()
         axis = np.arange(recipe.width, dtype=np.float32)
-        phases = np.array([camera.phase for camera in recipe.cameras], dtype=np.float32)
+        sx, _ = recipe.output_scale
+        phases = np.array([camera.phase * sx for camera in recipe.cameras], dtype=np.float32)
         offset = (axis - phases[:, None] + recipe.width / 2) % recipe.width - recipe.width / 2
         angles = offset * np.float32(2 * np.pi / recipe.width)
         distances = np.abs(offset)
@@ -127,7 +140,9 @@ class TubeUnwrapper:
         r = self.recipe
         if len(r.cameras) != 4 or len(r.input_shape) != 2:
             raise ValueError("Recipe must specify four cameras and one input shape (height, width)")
-        dimensions = (*r.input_shape, r.width, r.height)
+        if len(r.reference_grid) != 2:
+            raise ValueError("Reference grid must have two dimensions")
+        dimensions = (*r.input_shape, r.width, r.height, *r.reference_grid)
         if any(not isinstance(value, int) or not 1 < value < 32767 for value in dimensions):
             raise ValueError("Input and output dimensions must be integers between 2 and 32766")
         if r.input_height_range is not None:
@@ -141,7 +156,7 @@ class TubeUnwrapper:
             raise ValueError("Invalid trim or view angle")
         for c in r.cameras:
             values = (c.left, c.right, c.top, c.bottom, c.phase, c.perspective)
-            if not all(map(math.isfinite, values)) or not 0 <= c.phase < r.width:
+            if not all(map(math.isfinite, values)) or not 0 <= c.phase < r.reference_grid[0]:
                 raise ValueError("Invalid camera coordinates or phase")
             if not (0 <= c.left < c.right < r.input_shape[1]
                     and 0 <= c.top < c.bottom < r.input_shape[0]
@@ -204,13 +219,19 @@ class TubeUnwrapper:
         geometries, cameras = zip(*(first + second), strict=True)
 
         r = self.recipe
+        ref_w, ref_h = r.reference_grid
 
         def project(camera_index: int, points: np.ndarray) -> tuple[np.ndarray, float]:
             return project_contour(points, geometries[camera_index], cameras[camera_index],
-                                   r.width, r.height, r.trim_px)
+                                   ref_w, ref_h, r.trim_px)
 
-        holes, alternates = find_hole_groups(gray, geometries, project, r.width, r.height,
-                                             settings=r.hole_settings)
+        # Group/clamp the few contours at calibrated coordinates, not at integer output rows.
+        # Otherwise the last output pixel can admit a contour outside the calibrated pipe end.
+        holes, alternates = find_hole_groups(gray, geometries, project, ref_w, ref_h, settings=r.hole_settings)
+        if (r.width, r.height) != (ref_w, ref_h):
+            sx, sy = r.output_scale
+            holes = tuple(h.scaled(sx, sy) for h in holes)
+            alternates = tuple(tuple(h.scaled(sx, sy) for h in group) for group in alternates)
         strips = []
         for i, (frame, body, camera, view) in enumerate(zip(gray, geometries, cameras, self._views), 1):
             strip = np.empty((r.height, view.columns.size), dtype=np.uint8)
@@ -247,5 +268,5 @@ class TubeUnwrapper:
 
         blend_holes(image, source, strips, tuple(view.local_column for view in self._views),
                     self._primary, self._alpha, holes, alternate_contours,
-                    r.hole_settings.dark_threshold)
+                    r.hole_settings.dark_threshold, output_scale=r.output_scale)
         return image, source

@@ -9,7 +9,7 @@ import numpy as np
 
 @dataclass(frozen=True)
 class CameraCalibration:
-    """Nominal silhouette and the camera's frontal column in the panorama."""
+    """Silhouette in camera pixels; phase is the frontal column in the calibrated reference panorama."""
 
     left: float
     right: float

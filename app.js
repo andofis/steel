@@ -11,6 +11,14 @@
     unwrappedViewTab: document.getElementById("unwrappedViewTab"),
     unwrappedView: document.getElementById("unwrappedView"),
     unwrappedImage: document.getElementById("unwrappedImage"),
+    unwrapSizeForm: document.getElementById("unwrapSizeForm"),
+    unwrapSizePreset: document.getElementById("unwrapSizePreset"),
+    unwrapSizeActive: document.getElementById("unwrapSizeActive"),
+    unwrapWidth: document.getElementById("unwrapWidth"),
+    unwrapHeight: document.getElementById("unwrapHeight"),
+    unwrapCustomDims: document.getElementById("unwrapCustomDims"),
+    unwrapSizeHint: document.getElementById("unwrapSizeHint"),
+    applyUnwrapSize: document.getElementById("applyUnwrapSize"),
     unwrappedMeta: document.getElementById("unwrappedMeta"),
     unwrappedPlaceholder: document.getElementById("unwrappedPlaceholder"),
     unwrappedScroll: document.getElementById("unwrappedScroll"),
@@ -89,6 +97,8 @@
     previewImages: [null, null, null, null],
     previewInFlight: [false, false, false, false],
     inputDirty: false,
+    unwrapSizeDirty: false,
+    unwrapSizeSaving: false,
     actionBusy: false,
     previousPipeCount: 0,
     latestUnwrappedPipeId: "",
@@ -180,6 +190,59 @@
   function setUnwrappedZoom(value) {
     state.unwrappedZoom = Math.min(4, Math.max(0.5, Number(value) || 1));
     ui.unwrappedImage.style.width = `${Math.round(state.unwrappedZoom * 100)}%`;
+  }
+
+  function showUnwrapSize(spec) {
+    if (!spec) return;
+    const select = ui.unwrapSizePreset;
+    const signature = `${spec.max_width}x${spec.max_height}`;
+    if (select.dataset.reference !== signature) {
+      const options = spec.presets.map(p => new Option(`${p.label}　${p.width} × ${p.height}`, `${p.width}x${p.height}`));
+      select.replaceChildren(...options, new Option("自定义宽高…", "custom"));
+      select.dataset.reference = signature;
+      ui.unwrapWidth.min = spec.min_width; ui.unwrapWidth.max = spec.max_width;
+      ui.unwrapHeight.min = spec.min_height; ui.unwrapHeight.max = spec.max_height;
+    }
+    // Keep a partially typed size intact when the camera changes or /api/state is polled.
+    if (!state.unwrapSizeDirty) {
+      const match = spec.presets.some(p => p.width === spec.width && p.height === spec.height);
+      select.value = match ? `${spec.width}x${spec.height}` : "custom";
+      ui.unwrapWidth.value = spec.width;
+      ui.unwrapHeight.value = spec.height;
+    }
+    const custom = select.value === "custom";
+    if (!custom) [ui.unwrapWidth.value, ui.unwrapHeight.value] = select.value.split("x");
+    ui.unwrapCustomDims.hidden = !custom;
+    select.disabled = state.unwrapSizeSaving;
+    ui.unwrapWidth.disabled = ui.unwrapHeight.disabled = !custom || state.unwrapSizeSaving;
+    const w = ui.unwrapWidth.valueAsNumber, h = ui.unwrapHeight.valueAsNumber;
+    const valid = Number.isInteger(w) && w >= spec.min_width && w <= spec.max_width &&
+      Number.isInteger(h) && h >= spec.min_height && h <= spec.max_height;
+    ui.unwrapSizeActive.textContent = `当前 ${spec.width} × ${spec.height}`;
+    ui.unwrapSizeActive.className = "tiny-status ok";
+    ui.applyUnwrapSize.disabled = state.unwrapSizeSaving || !valid || (w === spec.width && h === spec.height);
+    ui.unwrapSizeHint.textContent = valid
+      ? `输出像素量为原档的 ${Number((100 * w * h / (spec.max_width * spec.max_height)).toFixed(1))}%。` +
+        (Math.abs(w / spec.max_width - h / spec.max_height) > 0.001 ? "宽高未等比缩放，孔的外形比例会改变。" : "")
+      : `请输入整数：宽 ${spec.min_width}–${spec.max_width}，高 ${spec.min_height}–${spec.max_height}。`;
+  }
+
+  async function saveUnwrapSize(event) {
+    event.preventDefault();
+    if (ui.applyUnwrapSize.disabled || !state.server?.unwrap_size) return;
+    const size = {width: ui.unwrapWidth.valueAsNumber, height: ui.unwrapHeight.valueAsNumber};
+    state.unwrapSizeSaving = true;
+    showUnwrapSize(state.server.unwrap_size);
+    try {
+      await apiRequest("/api/unwrap-size", size);
+      state.unwrapSizeDirty = false;
+      showToast("展开尺寸已保存", `下一根钢管起使用 ${size.width} × ${size.height}。`, "success");
+    } catch (error) {
+      showToast("展开尺寸未保存", error.message, "error");
+    } finally {
+      state.unwrapSizeSaving = false;
+      showUnwrapSize(state.server.unwrap_size);
+    }
   }
 
   function updateUnwrappedResult(result, reveal = false) {
@@ -589,6 +652,7 @@
     if (!server) return;
     const previousPipes = state.previousPipeCount;
     state.server = server;
+    showUnwrapSize(server.unwrap_size);
     syncInputsFromConfig(server);
     updateSdkStatus(server);
     updateCameraCards(server);
@@ -617,7 +681,7 @@
       showCaptureFlash("展开图已生成");
       showToast(
         "展开图已生成",
-        "已发布全分辨率展开图；保存状态见结果栏和采集记录。",
+        "已按所选尺寸发布展开图；保存状态见结果栏和采集记录。",
         "success",
       );
     }
@@ -851,6 +915,14 @@
   }
 
   function bindEvents() {
+    function editUnwrapSize() {
+      state.unwrapSizeDirty = true;
+      showUnwrapSize(state.server?.unwrap_size);
+    }
+    ui.unwrapSizePreset.addEventListener("change", editUnwrapSize);
+    ui.unwrapWidth.addEventListener("input", editUnwrapSize);
+    ui.unwrapHeight.addEventListener("input", editUnwrapSize);
+    ui.unwrapSizeForm.addEventListener("submit", saveUnwrapSize);
     ui.singleViewTab.addEventListener("click", () => setView("single"));
     ui.quadViewTab.addEventListener("click", () => setView("quad"));
     ui.unwrappedViewTab.addEventListener("click", () => setView("unwrapped"));

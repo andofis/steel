@@ -27,7 +27,7 @@ class ResultDeliveryTest(unittest.TestCase):
         self.addCleanup(self.service.executor.shutdown, wait=True)
         self.addCleanup(self.service.preview_executor.shutdown, wait=True)
         self.image = np.arange(24, dtype=np.uint8).reshape(6, 4)
-        self.service.unwrap_bridge = SimpleNamespace(process_packets=lambda _: SimpleNamespace(
+        self.service.unwrap_bridge = SimpleNamespace(process_packets=lambda _, *, output_size: SimpleNamespace(
             ok=True, image=self.image, elapsed_ms=1, status="ok", message="", hole_count=0,
             bounds=(), input_shapes=((4, 6),) * 4))
 

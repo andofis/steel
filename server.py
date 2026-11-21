@@ -172,6 +172,9 @@ class CaptureHandler(http.server.SimpleHTTPRequestHandler):
             if path == "/api/config":
                 self.send_json({"ok": True, "state": SERVICE.apply_config(body)})
                 return
+            if path == "/api/unwrap-size":
+                self.send_json({"ok": True, "state": SERVICE.set_unwrap_size(body.get("width"), body.get("height"))})
+                return
             if path == "/api/open-output":
                 output = SERVICE.open_output_dir()
                 self.send_json({"ok": True, "path": output})
