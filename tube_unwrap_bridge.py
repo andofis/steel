@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -61,8 +62,9 @@ def _estimate_vertical_bounds(image: np.ndarray) -> Tuple[int, int]:
 class TubeUnwrapBridge:
     """Build a per-capture recipe from fixed optical calibration and dynamic tube ends."""
 
-    def __init__(self, recipe_path: Path | str = DEFAULT_RECIPE) -> None:
+    def __init__(self, recipe_path: Path | str = DEFAULT_RECIPE, *, localization_executor: ThreadPoolExecutor | None = None) -> None:
         self.recipe_path = Path(recipe_path)
+        self.localization_executor = localization_executor
         self.config = json.loads(self.recipe_path.read_text(encoding="utf-8"))
         if len(self.config.get("cameras", [])) != 4:
             raise ValueError("拼接配方必须包含四台相机")
@@ -150,7 +152,7 @@ class TubeUnwrapBridge:
             for image in arrays:
                 bounds_list.append(_estimate_vertical_bounds(image))
             recipe = self._build_recipe(arrays, bounds_list)
-            result = TubeUnwrapper(recipe).process(arrays)
+            result = TubeUnwrapper(recipe).process(arrays, localization_executor=self.localization_executor)
         except Exception as exc:
             return BridgeResult(
                 status=UnwrapStatus.REVIEW.value,

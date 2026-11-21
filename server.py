@@ -12,7 +12,7 @@ import socket
 import threading
 import webbrowser
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.parse import parse_qs, urlparse
 
 from hikrobot_camera import HikRobotService
 
@@ -93,9 +93,17 @@ class CaptureHandler(http.server.SimpleHTTPRequestHandler):
                 "camera_count": len([camera for camera in state["cameras"] if camera["status"] == "online"]),
             })
             return
+        if path == "/api/unwrapped/wait":
+            after = parse_qs(parsed.query).get("after", [""])[0]
+            try:
+                self.send_json({"result": SERVICE.wait_for_unwrapped(after)})
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                pass  # The tab closed during the bounded wait.
+            return
         if path == "/api/unwrapped/latest.png":
             try:
-                payload, info = SERVICE.get_latest_unwrapped()
+                expected = parse_qs(parsed.query).get("pipe", [""])[0]
+                payload, info = SERVICE.get_latest_unwrapped(expected)
             except Exception as exc:
                 self.send_error_json(str(exc), status=404)
                 return

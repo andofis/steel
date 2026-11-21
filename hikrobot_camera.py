@@ -23,7 +23,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any, Dict, Iterator, List, Optional, Tuple
 
-from image_codec import create_unwrapped_image, mono8_to_preview_bmp, write_mono8_png
+from image_codec import create_unwrapped_image, encode_mono8_png, mono8_to_preview_bmp, write_encoded_png, write_mono8_png
 
 ROOT = Path(__file__).resolve().parent
 
@@ -479,13 +479,16 @@ class HikRobotService:
         self.unwrap_bridge_error = ""
         self.latest_unwrapped_path: Optional[Path] = None
         self.latest_unwrapped_info: Dict[str, Any] = {}
+        self.result_condition = threading.Condition(self.lock)
+        self._latest_png: Optional[bytes] = None
+        self._latest_capture_epoch = -math.inf
         self.save_pipe_id = ""
         self.save_phase = "idle"
         self.save_started_at = 0.0
         self._restore_latest_unwrapped()
         try:
             from tube_unwrap_bridge import TubeUnwrapBridge
-            self.unwrap_bridge = TubeUnwrapBridge()
+            self.unwrap_bridge = TubeUnwrapBridge(localization_executor=self.preview_executor)
             self._log("INFO", "钢管展开模块已加载: tube_unwrap 0.1.2")
         except Exception as exc:
             self.unwrap_bridge_error = str(exc)
@@ -1083,11 +1086,12 @@ class HikRobotService:
         self.config["output_dir"] = raw_value if not Path(raw_value).is_absolute() else str(path)
         self.save_settings()
 
-    def output_dir(self) -> Path:
+    def output_dir(self, *, create: bool = True) -> Path:
         path = Path(str(self.config.get("output_dir", "captures")))
         if not path.is_absolute():
             path = ROOT / path
-        path.mkdir(parents=True, exist_ok=True)
+        if create:
+            path.mkdir(parents=True, exist_ok=True)
         return path
 
     def select_output_dir_dialog(self) -> str:
@@ -1252,7 +1256,9 @@ class HikRobotService:
         add_stage("实时预览已暂停", "preview_paused", "preview_pause_requested", "等待预览结束 ", "仅暂停画面更新，相机采集继续")
         add_stage("开始生成展开图", "unwrap_started", "save_started", "保存准备 ")
         add_stage("展开算法完成", "unwrap_completed", "unwrap_started", "展开算法 ")
-        add_stage("unwrapped.png 保存完成", "unwrapped_image_saved", "unwrap_completed", "展开图写盘 ", "此时界面已可查看")
+        add_stage("全分辨率展开图已发布", "result_published", "unwrap_completed", "无损编码与发布 ", "浏览器此时可取图，尚未计入浏览器解码和显示")
+        add_stage("unwrapped.png 保存完成", "unwrapped_image_saved", "result_published", "展开图写盘 ")
+        add_stage("展开图归档失败", "unwrapped_archive_failed", "result_published")
         add_stage("四张原图开始并行保存", "raw_save_started", "unwrapped_image_saved", "紧接着 ")
         add_stage("四张原图保存完成", "raw_images_saved", "raw_save_started", "四图并行写盘 ")
         add_stage("capture.json 完成", "manifest_saved", "raw_images_saved", "清单写入 ")
@@ -1273,7 +1279,8 @@ class HikRobotService:
         started = str(timeline.get("acquisition_started_iso", ""))
         return {
             "日期": started[:10],
-            "触发到展开图可见": duration_text(durations.get("result_ready_from_start", 0.0)),
+            "触发到展开图可见": duration_text(durations.get("result_ready_from_start", 0.0)),  # 兼容旧清单，指服务端可取图
+            "四路记录末帧到可取图": duration_text(durations["result_ready_after_last_frame"]) if "result_ready_after_last_frame" in durations else "—",
             "全部处理总耗时": duration_text(durations.get("pipeline_total", 0.0)),
             "阶段": rows,
             "四路相机采集明细": camera_rows,
@@ -1288,7 +1295,7 @@ class HikRobotService:
             prefix = prefix.replace(char, "_")
         state_prefix = "" if complete else "incomplete_"
         pipe_id = state_prefix + prefix[:80] + "_" + timestamp_for_path(moment)
-        folder = self.output_dir() / pipe_id
+        folder = self.output_dir(create=False) / pipe_id
         timeline = timeline or {}
         timeline.setdefault("acquisition_started_at", first_frame_epoch)
         timeline.setdefault("acquisition_started_iso", format_timeline_timestamp(first_frame_epoch))
@@ -1301,9 +1308,6 @@ class HikRobotService:
         records: List[Dict[str, Any]] = []
         composite_record = {}
         try:
-            folder_started_perf = time.perf_counter()
-            folder.mkdir(parents=True, exist_ok=True)
-            timeline["durations_ms"]["folder_prepare"] = round((time.perf_counter() - folder_started_perf) * 1000.0, 2)
             try:
                 add_timeline_event(timeline, "preview_pause_requested")
                 with self._pause_preview_for_unwrap():
@@ -1319,25 +1323,19 @@ class HikRobotService:
                     timeline["durations_ms"]["unwrap_algorithm"] = round((time.perf_counter() - unwrap_started_perf) * 1000.0, 2)
                 unwrapped_height, unwrapped_width = bridge_result.image.shape
                 unwrapped_path = folder / "unwrapped.png"
-                unwrap_write_started_perf = time.perf_counter()
-                write_mono8_png(
-                    unwrapped_path,
-                    unwrapped_width,
-                    unwrapped_height,
-                    bridge_result.image.tobytes(),
-                )
-                unwrapped_ready = add_timeline_event(timeline, "unwrapped_image_saved")
-                timeline["durations_ms"]["unwrapped_image_write"] = round((time.perf_counter() - unwrap_write_started_perf) * 1000.0, 2)
+                view = memoryview(bridge_result.image)
+                png = encode_mono8_png(unwrapped_width, unwrapped_height,
+                                       view.cast("B") if view.c_contiguous else view.tobytes())
+                unwrapped_ready = add_timeline_event(timeline, "result_published")
                 timeline["durations_ms"]["result_ready_from_start"] = round(
                     (unwrapped_ready - float(timeline["acquisition_started_at"])) * 1000.0,
                     2,
                 )
-                timeline["durations_ms"]["result_ready_after_last_frame"] = round(
-                    (unwrapped_ready - float(timeline.get("last_frame_epoch", unwrapped_ready))) * 1000.0,
-                    2,
-                )
+                if timeline.get("last_frame_epoch") is not None:
+                    timeline["durations_ms"]["result_ready_after_last_frame"] = round(
+                        (unwrapped_ready - timeline["last_frame_epoch"]) * 1000.0, 2)
                 composite_record = {
-                    "file": "unwrapped.png",
+                    "file": "",
                     "width": unwrapped_width,
                     "height": unwrapped_height,
                     "angle_order": [0, 90, 180, 270],
@@ -1350,25 +1348,35 @@ class HikRobotService:
                     "camera_bounds": bridge_result.bounds,
                     "input_shapes": bridge_result.input_shapes,
                 }
+                with self.result_condition:
+                    # Work may overlap: a slow older capture must never replace a newer image.
+                    if first_frame_epoch >= self._latest_capture_epoch:
+                        self._latest_capture_epoch = first_frame_epoch
+                        self._latest_png = png
+                        self.latest_unwrapped_path = unwrapped_path
+                        self.latest_unwrapped_info = dict(composite_record, pipe_id=pipe_id, file=str(unwrapped_path),
+                            captured_at=moment.isoformat(timespec="milliseconds"), raw_images_ready=False,
+                            archive_status="pending", result_ready_ms=timeline["durations_ms"]["result_ready_from_start"],
+                            timeline=timeline)
+                        self.result_condition.notify_all()
+                    if self.save_pipe_id == pipe_id:
+                        self.save_phase = "unwrapped_ready"
+
+                # This is already a background save worker. No second compression, new queue or disk read for the viewer.
+                write_started = time.perf_counter()
+                try:
+                    write_encoded_png(unwrapped_path, png)
+                    composite_record.update(file="unwrapped.png", archive_status="saved")
+                    add_timeline_event(timeline, "unwrapped_image_saved")
+                except OSError as exc:
+                    composite_record.update(archive_status="failed", archive_error=str(exc))
+                    self.last_error = str(exc)
+                    add_timeline_event(timeline, "unwrapped_archive_failed")
+                    self._log("ERROR", "展开图已发布但归档失败 %s: %s" % (pipe_id, exc))
+                timeline["durations_ms"]["unwrapped_image_write"] = round((time.perf_counter() - write_started) * 1000, 2)
                 with self.lock:
-                    self.latest_unwrapped_path = unwrapped_path
-                    self.latest_unwrapped_info = dict(
-                        pipe_id=pipe_id,
-                        file=str(unwrapped_path),
-                        width=unwrapped_width,
-                        height=unwrapped_height,
-                        captured_at=moment.isoformat(timespec="milliseconds"),
-                        algorithm="tube_unwrap",
-                        algorithm_version="0.1.2",
-                        status=bridge_result.status,
-                        message=bridge_result.message,
-                        elapsed_ms=round(bridge_result.elapsed_ms, 2),
-                        hole_candidate_count=bridge_result.hole_count,
-                        raw_images_ready=False,
-                        result_ready_ms=timeline["durations_ms"]["result_ready_from_start"],
-                        timeline=timeline,
-                    )
-                    self.save_phase = "unwrapped_ready"
+                    if self.latest_unwrapped_path == unwrapped_path:
+                        self.latest_unwrapped_info["archive_status"] = composite_record["archive_status"]
                 self._log(
                     "INFO",
                     "四视角展开完成: %s，%d × %d，算法 %.0f ms，触发至出图 %.1f ms @ %s" % (
@@ -1384,7 +1392,8 @@ class HikRobotService:
                 self._log("ERROR", "展开图生成失败: %s" % composite_error)
 
             with self.lock:
-                self.save_phase = "raw_saving"
+                if self.save_pipe_id == pipe_id:
+                    self.save_phase = "raw_saving"
             add_timeline_event(timeline, "raw_save_started")
             raw_started_perf = time.perf_counter()
             raw_results: Dict[int, Dict[str, Any]] = {}
@@ -1417,7 +1426,11 @@ class HikRobotService:
                         except Exception as exc:
                             raw_errors.append("%s: %s" % (CAMERA_NAMES[slot], exc))
             if raw_errors:
-                raise RuntimeError("原图并行保存失败: %s" % "; ".join(raw_errors))
+                message = "原图并行保存失败: %s" % "; ".join(raw_errors)
+                with self.lock:
+                    if self.latest_unwrapped_info.get("pipe_id") == pipe_id:
+                        self.latest_unwrapped_info["raw_archive_error"] = message
+                raise RuntimeError(message)
 
             for slot in sorted(frames):
                 packet = frames[slot]
@@ -1447,7 +1460,8 @@ class HikRobotService:
             }
             timeline["raw_images_parallel"] = True
             with self.lock:
-                self.save_phase = "raw_saved"
+                if self.save_pipe_id == pipe_id:
+                    self.save_phase = "raw_saved"
                 if self.latest_unwrapped_path and self.latest_unwrapped_path.parent == folder:
                     self.latest_unwrapped_info["raw_images_ready"] = True
 
@@ -1473,6 +1487,7 @@ class HikRobotService:
                     "四路图片": "完整" if complete else "不完整",
                     "展开状态": "成功" if composite_record.get("status") == "ok" else "失败",
                     "展开图文件": composite_record.get("file", ""),
+                    "展开图归档": composite_record.get("archive_status", "未生成"),
                     "展开图尺寸": (
                         "%d × %d" % (composite_record.get("width", 0), composite_record.get("height", 0))
                         if composite_record else ""
@@ -1510,7 +1525,8 @@ class HikRobotService:
                 "save_started": "开始保存",
                 "unwrap_started": "开始展开",
                 "unwrap_completed": "展开算法完成",
-                "unwrapped_image_saved": "展开图可见",
+                "result_published": "展开图可取",
+                "unwrapped_image_saved": "展开图归档完成",
                 "raw_save_started": "原图并行保存开始",
                 "raw_images_saved": "四张原图保存完成",
                 "manifest_saved": "capture.json完成",
@@ -1539,10 +1555,11 @@ class HikRobotService:
                 ),
             )
             self._log("INFO", "阶段时间戳已写入: %s" % (folder / "capture.json"))
-            saved_images = len(frames) + (1 if composite_record else 0)
+            saved_images = len(frames) + int(bool(composite_record.get("file")))
             actual_image_count = len(list(folder.glob("*.png")))
             with self.lock:
-                self.save_phase = "completed"
+                if self.save_pipe_id == pipe_id:
+                    self.save_phase = "completed"
                 self.capture_sequence += 1
                 self.last_pipe_id = pipe_id
                 self.saved_count += saved_images
@@ -1559,6 +1576,7 @@ class HikRobotService:
                     "图像数量": actual_image_count,
                     "预期图像数量": 5,
                     "采集状态": "完整" if complete else "不完整",
+                    "归档失败": composite_record.get("archive_status") == "failed",
                     "展开状态": "成功" if composite_record.get("status") == "ok" else "失败",
                     "采集时间": moment.isoformat(timespec="milliseconds"),
                     "完成时间": format_timeline_timestamp(pipeline_completed),
@@ -1581,7 +1599,8 @@ class HikRobotService:
         except Exception as exc:
             self.last_error = str(exc)
             with self.lock:
-                self.save_phase = "failed"
+                if self.save_pipe_id == pipe_id:
+                    self.save_phase = "failed"
             self._log("ERROR", "保存钢管图像失败: %s" % exc)
     def get_gencim_xml(self, slot: int) -> str:
         if slot < 0 or slot >= 4:
@@ -1599,10 +1618,24 @@ class HikRobotService:
                 return bytes(buffer[:actual_len.value]).decode("utf-8", errors="replace")
             last_error = ret
         raise RuntimeError("读取相机 XML 失败 (0x%08x)" % last_error)
-    def get_latest_unwrapped(self) -> Tuple[bytes, Dict[str, Any]]:
+    def wait_for_unwrapped(self, after: str, timeout: float = 15) -> Optional[Dict[str, Any]]:
+        """Wait for a different pipe without polling camera state or the output directory."""
+        with self.result_condition:
+            if not self.result_condition.wait_for(
+                    lambda: bool(self.latest_unwrapped_info) and self.latest_unwrapped_info["pipe_id"] != after,
+                    timeout=timeout):
+                return None
+            info = {key: value for key, value in self.latest_unwrapped_info.items() if key != "timeline"}
+            return dict(info, url="/api/unwrapped/latest.png")
+
+    def get_latest_unwrapped(self, pipe_id: str = "") -> Tuple[bytes, Dict[str, Any]]:
         with self.lock:
             path = self.latest_unwrapped_path
             info = dict(self.latest_unwrapped_info)
+            if pipe_id and pipe_id != info.get("pipe_id"):
+                raise RuntimeError("结果已更新，请获取新批次")
+            if self._latest_png is not None:
+                return self._latest_png, info
         if not path or not path.exists():
             raise RuntimeError("当前没有可查看的展开图")
         return path.read_bytes(), info
@@ -1659,7 +1692,7 @@ class HikRobotService:
                 "unwrap_module_error": self.unwrap_bridge_error,
                 "config": dict(self.camera_configs[0], output_dir=self.config.get("output_dir", "captures"), folder_prefix=self.config.get("folder_prefix", "pipe"), target_brightness=self.config.get("target_brightness", 82), stream_align_ms=self.config.get("stream_align_ms", 1000)),
                 "camera_configs": [dict(cfg) for cfg in self.camera_configs],
-                "output_path": str(self.output_dir()),
+                "output_path": str(self.output_dir(create=False)),
                 "cameras": cameras,
                 "logs": logs,
                 "uptime_seconds": round(time.time() - self.started_at, 1),

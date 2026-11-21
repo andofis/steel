@@ -1,4 +1,5 @@
 import unittest
+from concurrent.futures import ThreadPoolExecutor
 from types import SimpleNamespace
 
 import numpy as np
@@ -29,6 +30,31 @@ class TubeLocalizationTest(unittest.TestCase):
         self.assertEqual(result.image.shape, (240, 1536))
         self.assertAlmostEqual(result.bounds[0][0], self.edges[0][0], delta=2)
         self.assertAlmostEqual(result.bounds[2][1], self.edges[2][1], delta=2)
+
+    def test_parallel_localization_preserves_pixels_bounds_and_camera_order(self):
+        # Put distinct markings in the views so swapping healthy camera pairs cannot pass.
+        for i, (frame, (left, right)) in enumerate(zip(self.frames, self.edges)):
+            x, y = (left + right) // 2, 400 + i * 140
+            frame[y:y + 22, x - 12:x + 12] = 5
+        serial = self.unwrap()
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            self.bridge.localization_executor = pool
+            parallel = self.unwrap()
+        closed_pool = self.unwrap()  # A save already in flight during shutdown still completes.
+        self.assertTrue(serial.ok, serial.message)
+        self.assertGreater(serial.hole_count, 0)
+        for result in (parallel, closed_pool):
+            self.assertTrue(result.ok, result.message)
+            self.assertEqual((result.bounds, result.hole_count), (serial.bounds, serial.hole_count))
+            np.testing.assert_array_equal(result.image, serial.image)
+
+    def test_parallel_failure_identifies_camera_in_second_pair(self):
+        self.frames[2].fill(40)
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            self.bridge.localization_executor = pool
+            result = self.unwrap()
+        self.assertFalse(result.ok)
+        self.assertIn("Camera 3", result.message)
 
     def test_unwraps_a_tube_that_drifts_sideways_along_its_length(self):
         frame = self.frames[0]

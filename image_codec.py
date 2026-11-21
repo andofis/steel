@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Small dependency-free image codecs used by the acquisition service."""
+"""Image codecs for acquisition, with a stdlib fallback for capture-only installs."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import binascii
 import os
 import struct
 import zlib
+from operator import itemgetter
 from pathlib import Path
 from typing import Dict
 
@@ -17,13 +18,28 @@ def _png_chunk(kind: bytes, payload: bytes) -> bytes:
     return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", crc)
 
 
-def write_mono8_png(path: Path, width: int, height: int, pixels: bytes) -> None:
-    """Write an 8-bit grayscale PNG with no external dependencies."""
+def encode_mono8_png(width: int, height: int, pixels: bytes | memoryview) -> bytes:
+    """Encode once, losslessly; the viewer and the archive share these bytes."""
+    if width <= 0 or height <= 0:
+        raise ValueError("无效图像尺寸")
     expected = width * height
     if len(pixels) < expected:
         raise ValueError(f"像素数据不足：需要 {expected} 字节，实际 {len(pixels)} 字节")
-    if len(pixels) > expected:
-        pixels = pixels[:expected]
+    # Capture-only installations can still archive frames without OpenCV.
+    try:
+        import cv2
+        import numpy as np
+    except ImportError:
+        pass
+    else:
+        image = np.frombuffer(pixels, dtype=np.uint8, count=expected).reshape(height, width)
+        try:
+            ok, encoded = cv2.imencode(".png", image)
+        except cv2.error:  # A minimal OpenCV build may lack a PNG codec.
+            pass
+        else:
+            if ok:
+                return encoded.tobytes()
 
     raw = bytearray((width + 1) * height)
     source_offset = 0
@@ -37,15 +53,30 @@ def write_mono8_png(path: Path, width: int, height: int, pixels: bytes) -> None:
 
     signature = b"\x89PNG\r\n\x1a\n"
     ihdr = struct.pack(">IIBBBBB", width, height, 8, 0, 0, 0, 0)
-    compressed = zlib.compress(bytes(raw), level=4)
-    payload = signature + _png_chunk(b"IHDR", ihdr) + _png_chunk(b"IDAT", compressed) + _png_chunk(b"IEND", b"")
+    compressed = zlib.compress(raw, level=4)
+    return signature + _png_chunk(b"IHDR", ihdr) + _png_chunk(b"IDAT", compressed) + _png_chunk(b"IEND", b"")
+
+
+def write_encoded_png(path: Path, payload: bytes) -> None:
+    """Publish only a complete, flushed file (including on non-ASCII paths)."""
     path.parent.mkdir(parents=True, exist_ok=True)
     temp_path = path.with_suffix(path.suffix + ".tmp")
-    with open(temp_path, "wb") as handle:
-        handle.write(payload)
-        handle.flush()
-        os.fsync(handle.fileno())
-    os.replace(str(temp_path), str(path))
+    try:
+        with open(temp_path, "wb") as handle:
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(str(temp_path), str(path))
+    except OSError:
+        try:
+            temp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
+
+
+def write_mono8_png(path: Path, width: int, height: int, pixels: bytes) -> None:
+    write_encoded_png(path, encode_mono8_png(width, height, pixels))
 
 
 def mono8_to_preview_bmp(width: int, height: int, pixels: bytes, max_width: int = 960) -> bytes:
@@ -59,8 +90,8 @@ def mono8_to_preview_bmp(width: int, height: int, pixels: bytes, max_width: int 
     scale = min(1.0, float(max_width) / float(width))
     out_width = max(1, int(width * scale))
     out_height = max(1, int(height * scale))
-    x_map = [min(width - 1, int(x * width / out_width)) for x in range(out_width)]
-    y_map = [min(height - 1, int(y * height / out_height)) for y in range(out_height)]
+    # itemgetter gathers a whole scan line in C rather than looping through RGB pixels in Python.
+    gather = itemgetter(*(x * width // out_width for x in range(out_width))) if 1 < out_width < width else None
 
     row_stride = ((out_width * 3 + 3) // 4) * 4
     image_size = row_stride * out_height
@@ -70,15 +101,14 @@ def mono8_to_preview_bmp(width: int, height: int, pixels: bytes, max_width: int 
     body = bytearray(image_size)
 
     for out_y in range(out_height):
-        source_y = y_map[out_height - 1 - out_y]
+        source_y = (out_height - 1 - out_y) * height // out_height
         source_base = source_y * width
         target_base = out_y * row_stride
-        for out_x, source_x in enumerate(x_map):
-            value = pixels[source_base + source_x]
-            offset = target_base + out_x * 3
-            body[offset] = value
-            body[offset + 1] = value
-            body[offset + 2] = value
+        row = pixels[source_base:source_base + width]
+        gray = bytes(gather(row)) if gather else row[:out_width]
+        end = target_base + 3 * out_width
+        for channel in range(3):
+            body[target_base + channel:end:3] = gray
     return header + info + bytes(body)
 
 

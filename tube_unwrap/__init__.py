@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import math
+from concurrent.futures import CancelledError, ThreadPoolExecutor
 from dataclasses import dataclass, field
 from enum import Enum
 from importlib.resources import files
@@ -148,7 +149,7 @@ class TubeUnwrapper:
                     and c.bottom - c.top > 2 * r.trim_px):
                 raise ValueError("Invalid camera silhouette bounds or perspective")
 
-    def process(self, frames: Sequence[np.ndarray]) -> UnwrapResult:
+    def process(self, frames: Sequence[np.ndarray], *, localization_executor: ThreadPoolExecutor | None = None) -> UnwrapResult:
         """Accept four uint8 Mono8 or BGR arrays. OK reports processing, not part acceptance."""
         started = perf_counter()
 
@@ -158,23 +159,49 @@ class TubeUnwrapper:
         if isinstance(frames, np.ndarray) or not hasattr(frames, "__len__") or len(frames) != 4:
             return failure(UnwrapStatus.INVALID_INPUT, "Expected four camera frames in recipe order")
         gray = []
-        geometries = []
-        cameras = []
         nominal_height, width = self.recipe.input_shape
         min_height, max_height = self.recipe.input_height_range or (nominal_height, nominal_height)
-        for index, (frame, camera) in enumerate(zip(frames, self.recipe.cameras), 1):
+        for index, frame in enumerate(frames, 1):
             if (not isinstance(frame, np.ndarray) or frame.dtype != np.uint8
                     or frame.ndim not in (2, 3) or frame.shape[1] != width
                     or not min_height <= frame.shape[0] <= max_height
                     or (frame.ndim == 3 and frame.shape[2] != 3)):
                 return failure(UnwrapStatus.INVALID_INPUT, f"Camera {index}: unexpected shape or pixel format")
             gray.append(frame if frame.ndim == 2 else cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY))
+
+        def locate_pair(start: int):
+            pair = []
+            for i in (start, start + 1):
+                try:
+                    pair.append(locate_body_with_fallback(gray[i], self.recipe.cameras[i]))
+                except ValueError as exc:
+                    raise ValueError(f"Camera {i + 1}: {exc}") from exc
+            return pair
+
+        # Only one additional worker per capture. In the console this borrows a
+        # drained preview worker; standalone callers can keep the serial path.
+        later = None
+        if localization_executor is not None:
             try:
-                body, adjusted = locate_body_with_fallback(gray[-1], camera)
-            except ValueError as exc:
-                return failure(UnwrapStatus.REVIEW, f"Camera {index}: {exc}")
-            geometries.append(body)
-            cameras.append(adjusted)
+                later = localization_executor.submit(locate_pair, 2)
+            except RuntimeError:  # Executor already shutting down; finish this capture serially.
+                pass
+        try:
+            first = locate_pair(0)
+            try:
+                second = later.result() if later is not None else locate_pair(2)
+            except CancelledError:
+                second = locate_pair(2)
+        except ValueError as exc:
+            return failure(UnwrapStatus.REVIEW, str(exc))
+        finally:
+            if later is not None and not later.done():
+                # Drain the other pair even on an early failure before resuming live previews.
+                try:
+                    later.exception()
+                except CancelledError:
+                    pass
+        geometries, cameras = zip(*(first + second), strict=True)
 
         r = self.recipe
 

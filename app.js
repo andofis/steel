@@ -92,6 +92,8 @@
     actionBusy: false,
     previousPipeCount: 0,
     latestUnwrappedPipeId: "",
+    latestUnwrappedAt: "",
+    retryUnwrappedImage: false,
     pendingUnwrappedReveal: false,
     unwrappedZoom: 1,
     logsSignature: "",
@@ -184,29 +186,63 @@
     if (!result || !result.url) return false;
     const pipeId = String(result.pipe_id || "");
     const changed = pipeId !== state.latestUnwrappedPipeId;
-    if (changed) {
+    const stamp = result.captured_at || "";
+    // A full-state response already in flight must not undo a newer result notification.
+    if (changed && stamp && stamp < state.latestUnwrappedAt) return false;
+    if (changed || state.retryUnwrappedImage) {
       state.latestUnwrappedPipeId = pipeId;
-      const stamp = encodeURIComponent(result.captured_at || pipeId || String(Date.now()));
+      state.latestUnwrappedAt = stamp;
+      state.retryUnwrappedImage = false;
+      // Do not show the previous pipe under the new batch number during fetch/decode.
+      ui.unwrappedImage.hidden = true;
+      ui.unwrappedPlaceholder.hidden = false;
+      ui.unwrappedPlaceholder.querySelector("strong").textContent = "正在加载展开图";
+      ui.unwrappedPlaceholder.querySelector("p").textContent = pipeId;
       ui.unwrappedImage.onload = () => {
         ui.unwrappedImage.hidden = false;
         ui.unwrappedPlaceholder.hidden = true;
       };
       ui.unwrappedImage.onerror = () => {
+        state.retryUnwrappedImage = true;
         ui.unwrappedImage.hidden = true;
         ui.unwrappedPlaceholder.hidden = false;
         ui.unwrappedPlaceholder.querySelector("strong").textContent = "展开图读取失败";
-        ui.unwrappedPlaceholder.querySelector("p").textContent = "图片可能仍在保存，请稍后刷新状态。";
+        ui.unwrappedPlaceholder.querySelector("p").textContent = "正在重新获取当前批次结果。";
       };
-      ui.unwrappedImage.src = `${result.url}?v=${stamp}`;
-      setUnwrappedZoom(1);
+      const url = new URL(result.url, window.location.href);
+      url.searchParams.set("pipe", pipeId);
+      ui.unwrappedImage.src = url.href;
+      if (changed) setUnwrappedZoom(1);
     }
     const meta = [`${result.width || "?"} × ${result.height || "?"}`, pipeId || "最新结果"];
-    if (result.result_ready_ms) meta.push(`触发至出图 ${Math.round(result.result_ready_ms)} ms`);
+    if (result.result_ready_ms) meta.push(`触发至可取图 ${Math.round(result.result_ready_ms)} ms`);
     else if (result.elapsed_ms) meta.push(`展开算法 ${Math.round(result.elapsed_ms)} ms`);
-    if (result.raw_images_ready === false) meta.push("四张原图后台保存中");
+    if (result.archive_status === "failed") meta.push("展开图归档失败，请检查磁盘和日志");
+    else if (result.archive_status === "pending") meta.push("展开图后台归档中");
+    if (result.raw_archive_error) meta.push("原图归档失败，请检查磁盘和日志");
+    else if (result.raw_images_ready === false) meta.push("四张原图待保存");
     ui.unwrappedMeta.textContent = meta.join(" · ");
     if (reveal) setView("unwrapped");
     return changed;
+  }
+
+  async function watchUnwrappedResults() {
+    // One outstanding lightweight request per tab. Normal state polling remains the fallback.
+    let after = state.latestUnwrappedPipeId;
+    for (;;) {
+      try {
+        const response = await fetch(`/api/unwrapped/wait?after=${encodeURIComponent(after)}`);
+        if (!response.ok) throw new Error("结果通知暂不可用");
+        const { result } = await response.json();
+        if (result) after = result.pipe_id;
+        if (result && updateUnwrappedResult(result)) {
+          setView("unwrapped");
+          showCaptureFlash("展开图已生成");
+        }
+      } catch {
+        await new Promise(resolve => window.setTimeout(resolve, 1500));
+      }
+    }
   }
 
   function updateViewportVisibility() {
@@ -581,15 +617,13 @@
       showCaptureFlash("展开图已生成");
       showToast(
         "展开图已生成",
-        server.save_phase === "completed"
-          ? "展开图和四张原图均已保存。"
-          : "已直接显示展开图，四张原图正在后台并行保存。",
+        "已发布全分辨率展开图；保存状态见结果栏和采集记录。",
         "success",
       );
     }
     if (server.pipe_count > previousPipes) {
-      showCaptureFlash("四路钢管图像已保存");
-      showToast("钢管处理完成", `四张原图与展开图已保存，累计 ${server.pipe_count} 根钢管。`, "success");
+      showCaptureFlash("钢管处理完成");
+      showToast("钢管处理完成", `累计 ${server.pipe_count} 根钢管，归档结果见采集记录。`, "success");
       state.previousPipeCount = server.pipe_count;
     } else if (state.previousPipeCount === 0) {
       state.previousPipeCount = server.pipe_count || 0;
@@ -741,7 +775,8 @@
       images.textContent = `${item.图像数量 || 0} / ${item.预期图像数量 || 5}`;
       const status = document.createElement("span");
       status.textContent = `${item.采集状态 || "未知"} · ${item.展开状态 || "未知"}`;
-      status.className = item.采集状态 === "完整" && item.展开状态 === "成功" ? "history-ok" : "history-warn";
+      if (item.归档失败) status.textContent += " · 归档失败";
+      status.className = item.采集状态 === "完整" && item.展开状态 === "成功" && !item.归档失败 ? "history-ok" : "history-warn";
       const completed = document.createElement("span");
       completed.textContent = String(item.完成时间 || "").slice(11, 23) || "—";
       row.append(seq, folder, images, status, completed);
@@ -870,6 +905,7 @@
     window.setInterval(updateClock, 1000);
     startRenderLoop();
     await pollState();
+    watchUnwrappedResults();
     state.pollTimer = window.setInterval(pollState, 900);
     state.previewTimer = window.setInterval(pollPreviews, 360);
     window.setTimeout(() => {
