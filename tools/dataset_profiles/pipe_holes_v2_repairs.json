@@ -1,0 +1,274 @@
+{
+  "version": "pipe_holes_v2.1",
+  "base_profile": "pipe_holes_v1.json",
+  "coordinates": "xyxy, native PNG pixels, right/bottom exclusive; for a hole crossing the old seam, negative x wraps to the right edge.",
+  "method": "仅对已复核目标修订：在原灰度图环绕取样，以 38/45/53/60/68 多个灰度阈值定位同一暗孔，取稳定外沿并留 3 px 边界，逐项看图核对后冻结。未列入清单的框不移动、不收紧。",
+  "patches": [
+    {
+      "alias": "B24",
+      "source_line": null,
+      "operation": "add",
+      "ring_xyxy": [
+        425,
+        2553,
+        510,
+        2658
+      ]
+    },
+    {
+      "alias": "AOX1",
+      "source_line": 2,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -10,
+        5223,
+        76,
+        5396
+      ]
+    },
+    {
+      "alias": "AOX1",
+      "source_line": 4,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -18,
+        7455,
+        68,
+        7622
+      ]
+    },
+    {
+      "alias": "AOX1",
+      "source_line": 5,
+      "operation": "refit",
+      "expected_source_xyxy": [
+        18,
+        8684,
+        110,
+        8877
+      ],
+      "ring_xyxy": [
+        -5,
+        8697,
+        83,
+        8798
+      ],
+      "note": "整管复核发现旧框左边穿过孔口、下方包含管壁。cut_x=384 的原像素图上，阈值 68 的孔口范围为 [1150,8700,1232,8795)，四边各留 3 px；换算回原切口时左端跨缝。"
+    },
+    {
+      "alias": "AOX2",
+      "source_line": 4,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -66,
+        7429,
+        21,
+        7529
+      ]
+    },
+    {
+      "alias": "AOX3",
+      "source_line": 2,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -60,
+        5216,
+        27,
+        5387
+      ]
+    },
+    {
+      "alias": "AOX3",
+      "source_line": 4,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -66,
+        7431,
+        22,
+        7594
+      ]
+    },
+    {
+      "alias": "AOX3",
+      "source_line": 5,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -48,
+        8675,
+        40,
+        8780
+      ]
+    },
+    {
+      "alias": "B11",
+      "source_line": 5,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -63,
+        7459,
+        24,
+        7559
+      ]
+    },
+    {
+      "alias": "B22",
+      "source_line": 5,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -21,
+        5761,
+        64,
+        5863
+      ]
+    },
+    {
+      "alias": "B24",
+      "source_line": 1,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -35,
+        1255,
+        51,
+        1356
+      ]
+    },
+    {
+      "alias": "B24",
+      "source_line": 2,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -15,
+        2486,
+        72,
+        2656
+      ]
+    },
+    {
+      "alias": "B24",
+      "source_line": 3,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -15,
+        4736,
+        72,
+        4908
+      ]
+    },
+    {
+      "alias": "未分类11",
+      "source_line": 9,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -15,
+        8765,
+        90,
+        8875
+      ]
+    },
+    {
+      "alias": "未分类14",
+      "source_line": 4,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -88,
+        2650,
+        18,
+        2766
+      ]
+    },
+    {
+      "alias": "未分类14",
+      "source_line": 5,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -58,
+        3327,
+        34,
+        3426
+      ]
+    },
+    {
+      "alias": "未分类15",
+      "source_line": 11,
+      "operation": "complete_seam",
+      "ring_xyxy": [
+        -66,
+        9152,
+        40,
+        9260
+      ]
+    }
+  ],
+  "still_unresolved": [
+    {
+      "alias": "AOX5",
+      "reason": "uncertain_ring",
+      "note": "保留原有五个孔框；亮圈内部呈管壁纹理，仅凭现有画面不能判成通孔，继续隔离该区。"
+    }
+  ],
+  "camera_checks": [
+    {
+      "alias": "B24",
+      "camera": 90,
+      "capture": "pipe_20261117_192112_159",
+      "camera_center_xy": [
+        1035,
+        3659
+      ],
+      "native_panorama_xy": [
+        465,
+        2602
+      ],
+      "camera_crop_xywh": [
+        875,
+        3534,
+        320,
+        250
+      ],
+      "capture_relative": "B2/pipe_20261117_192112_159/cam_90.png",
+      "source_sha256": "61ae4c6f75e1c709575b8f1fb1ef11dba77a6e42d224102548401c5c46e5b835"
+    },
+    {
+      "alias": "AOX3",
+      "camera": 0,
+      "capture": "pipe_20261117_184323_303",
+      "camera_center_xy": [
+        738,
+        9541
+      ],
+      "native_panorama_xy": [
+        1532,
+        8727
+      ],
+      "camera_crop_xywh": [
+        578,
+        9416,
+        320,
+        250
+      ],
+      "capture_relative": "AOX/pipe_20261117_184323_303/cam_0.png",
+      "source_sha256": "f41203c7d0ba374b0b66822e93f4e84b2b327cd9e5cd99a69292aab0bab94b96"
+    },
+    {
+      "alias": "AOX5",
+      "camera": 90,
+      "capture": "pipe_20261117_184445_354",
+      "camera_center_xy": [
+        938,
+        9301
+      ],
+      "native_panorama_xy": [
+        370,
+        8680
+      ],
+      "camera_crop_xywh": [
+        778,
+        9176,
+        320,
+        250
+      ],
+      "capture_relative": "AOX/pipe_20261117_184445_354/cam_90.png",
+      "source_sha256": "c5c81d6d187e86c1448d65fe502944e7f8db301cd632b316363791f520faf3b3"
+    }
+  ]
+}

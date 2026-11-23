@@ -1,0 +1,238 @@
+{
+  "version": "pipe_holes_v1",
+  "working_size": [
+    1152,
+    7500
+  ],
+  "tile": {
+    "size": 640,
+    "step_x": 288,
+    "step_y": 384,
+    "min_fraction": 0.5,
+    "min_visible_side_px": 12
+  },
+  "families": {
+    "AOX": "train",
+    "B1": "train",
+    "B2": "train",
+    "未分类1": "val"
+  },
+  "split_note": "无实物管编号。按采集系列保守分组；AOX 与 B1/B2 有相近的孔位布局，全部置于同侧。未分类1 整组仅用于验证。此为代理划分，不设独立测试集。",
+  "sources": [
+    {
+      "alias": "AOX1",
+      "family": "AOX",
+      "capture_id": "pipe_20261117_184031_055",
+      "png_sha256": "2a491d6c741ee4ec9229a7473789905a1eaad3048ca95fccb4abee0cca65ef66",
+      "label_sha256": "9dd267d21280ee43217e22d8c87e250478e743f3a9f103fd5e3c6100526590fe",
+      "edge_review": {
+        "2": "cut",
+        "4": "cut"
+      }
+    },
+    {
+      "alias": "AOX2",
+      "family": "AOX",
+      "capture_id": "pipe_20261117_184117_893",
+      "png_sha256": "58e24629de74366783c04eea8e4310bb1aaf47457c2a4c8d6f8c78518d04efc6",
+      "label_sha256": "21eb72a2f92b49930d5f6a3144c390a789fd777ecd984b8fadf950aa74753e2d",
+      "edge_review": {
+        "4": "cut"
+      }
+    },
+    {
+      "alias": "AOX3",
+      "family": "AOX",
+      "capture_id": "pipe_20261117_184323_303",
+      "png_sha256": "509886712af3bb90b9207f5a6e7a09df1317e2ae8083c2963859f470cddd1453",
+      "label_sha256": "f402aecc029049b99230e4a74b79c2cfde5c7cc78c25672aaa2ba631d77b9f99",
+      "edge_review": {
+        "2": "cut",
+        "4": "cut",
+        "5": "cut"
+      }
+    },
+    {
+      "alias": "AOX4",
+      "family": "AOX",
+      "capture_id": "pipe_20261117_184407_670",
+      "png_sha256": "8c663d5af9920a9280ec653b7505e03935ff0419ab1f40854bb119f1193b4bab",
+      "label_sha256": "dba58eaa2078d0e8f978fa1b7e69db33e59792f83d030edbe9a8e0efe05f77a9",
+      "edge_review": {}
+    },
+    {
+      "alias": "AOX5",
+      "family": "AOX",
+      "capture_id": "pipe_20261117_184445_354",
+      "png_sha256": "1f40131d7e775c0eafb3fe24c1b80b39da9c6ac9c1ee125a56f5e08f71ebbc49",
+      "label_sha256": "899bd3c00ed0d753dfa189987354061f0fb881733e13bb28f52bdf7c6ac58271",
+      "edge_review": {},
+      "review_regions": [
+        {
+          "reason": "uncertain_ring",
+          "xyxy": [
+            240,
+            8510,
+            500,
+            8860
+          ],
+          "note": "原图约 (370, 8680) 为明亮圆环、内部近似管壁。请确认是否通孔；不因同组孔布局自动加框。"
+        }
+      ]
+    },
+    {
+      "alias": "B11",
+      "family": "B1",
+      "capture_id": "pipe_20261117_191326_515",
+      "png_sha256": "9ae818b7c276618a2cb00c25250a11f671c91164cd0eb3b5363e9fd374f4b906",
+      "label_sha256": "3584b3afb3e7c36bab9c9da0d78ceaab7f57a1ed723f973be5d377cbed04b718",
+      "edge_review": {
+        "5": "cut"
+      }
+    },
+    {
+      "alias": "B12",
+      "family": "B1",
+      "capture_id": "pipe_20261117_191502_311",
+      "png_sha256": "bf97c2f3a803df5eb2cc74e0f8d9fbc87dca7f1661582ad2bb189e48c78c1385",
+      "label_sha256": "e60dfb0a3d9499acae90956905b975200238be12e50328eb7ad15e0515a47bd5",
+      "edge_review": {}
+    },
+    {
+      "alias": "B13",
+      "family": "B1",
+      "capture_id": "pipe_20261117_191522_228",
+      "png_sha256": "62d28b2a540f20fabd2faff7cdea8205c29d2a71fd5821727e1c34ddadd26927",
+      "label_sha256": "c8cbcb92786b231c232eec5b892e5e9d48de871d097dab959a35d033dc3dac7c",
+      "edge_review": {}
+    },
+    {
+      "alias": "B14",
+      "family": "B1",
+      "capture_id": "pipe_20261117_191534_456",
+      "png_sha256": "723f9efefa0489868f6a1f88ef3af96fbed76ef8f0fecf4f1cf4b957f3d99cfd",
+      "label_sha256": "c654fcbc5381f901fa46541c32869a883906fc64b6cc4b24ba492c8f2bcc6ba8",
+      "edge_review": {}
+    },
+    {
+      "alias": "B15",
+      "family": "B1",
+      "capture_id": "pipe_20261117_191547_748",
+      "png_sha256": "ef8c2e6af42ed7757aa06e54f4a6273f56154701f37b69fd277e2bfdc9f3100a",
+      "label_sha256": "3eaf46b955eef9a9a0843baba631c73a3237abddffd1252cde704da4a3d6d32d",
+      "edge_review": {
+        "1": "whole"
+      }
+    },
+    {
+      "alias": "B21",
+      "family": "B2",
+      "capture_id": "pipe_20261117_192029_325",
+      "png_sha256": "7df6a064935ae9ca1c1a6255b85ad6e883af163ba6fec7ad42cb238b48b6273c",
+      "label_sha256": "8a94ce58632f95f45a01407e435bfa2658bdc1773c3b27dabfd938cc3a9103f4",
+      "edge_review": {}
+    },
+    {
+      "alias": "B22",
+      "family": "B2",
+      "capture_id": "pipe_20261117_192044_758",
+      "png_sha256": "543214587fc651f2b5111a3cfd2353f97a545d8b44202295dfe065b175d8d303",
+      "label_sha256": "c9b68e85b87489e696e8ebd7ff2c211a4f96ea046b282f6b6f46cb04cfb81e09",
+      "edge_review": {
+        "3": "whole",
+        "5": "cut"
+      }
+    },
+    {
+      "alias": "B23",
+      "family": "B2",
+      "capture_id": "pipe_20261117_192059_115",
+      "png_sha256": "d68c2d8cb9622c0af628d32ffc65c0139a8c3cfba760c9a450e566b8e0be4595",
+      "label_sha256": "2efeb6e18f6eebb93b03351921e864e9be2f09560cb38c40c7c7532eb65887fe",
+      "edge_review": {}
+    },
+    {
+      "alias": "B24",
+      "family": "B2",
+      "capture_id": "pipe_20261117_192112_159",
+      "png_sha256": "4518de942ae4dfc309a20b88439904f81dfc1a04a0febe064a640e84db0e75dc",
+      "label_sha256": "28e7a753ca0c6722911caa4b40eedc4ab981cb78586994b6a1833350ecd4746f",
+      "edge_review": {
+        "1": "cut",
+        "2": "cut",
+        "3": "cut"
+      },
+      "review_regions": [
+        {
+          "reason": "possible_missing",
+          "xyxy": [
+            350,
+            2450,
+            580,
+            2740
+          ],
+          "note": "原图约 (465, 2602) 有与同组圆孔相似的暗圆，未见标注；请确认是否补画 hole。"
+        }
+      ]
+    },
+    {
+      "alias": "B25",
+      "family": "B2",
+      "capture_id": "pipe_20261117_192124_465",
+      "png_sha256": "2d2d69b1b23eb5ee30ec3476d9b61b2da77f30bbfc9be7a4a65d13648c0c1993",
+      "label_sha256": "1cd648aaa3af62393fcbdc8465ff9f60b05737d274ab12c8ff777ae336dd6b7b",
+      "edge_review": {}
+    },
+    {
+      "alias": "未分类11",
+      "family": "未分类1",
+      "capture_id": "pipe_20261117_183142_131",
+      "png_sha256": "6314da042c7315ec4f6bbb1cd68d0a566dcc0c2c3c31f050658e350a475ed8d6",
+      "label_sha256": "a4243a62d77a5efaebeb1700adb8284fee4022a84d92e197d4e5561307f99b2e",
+      "edge_review": {
+        "9": "cut"
+      }
+    },
+    {
+      "alias": "未分类12",
+      "family": "未分类1",
+      "capture_id": "pipe_20261117_183307_977",
+      "png_sha256": "c2b2359bbf85d24382b04fcd166d14eb534f5f0595ab1fe1fbc08b1f85a2e74d",
+      "label_sha256": "cae7fd58e151fb6dba82c1c833aea9932d84e46734d0c99f6f08081e15a3dc71",
+      "edge_review": {
+        "8": "whole",
+        "9": "whole"
+      }
+    },
+    {
+      "alias": "未分类13",
+      "family": "未分类1",
+      "capture_id": "pipe_20261117_183354_510",
+      "png_sha256": "7ffe137d0b11f81125cdc0e207b8f54c690286b61a861dbbd5a7fc77767c2587",
+      "label_sha256": "2ed04caa748be9c9f0da4459a687b9a068750a2e382e0b1904d01f125de007e6",
+      "edge_review": {}
+    },
+    {
+      "alias": "未分类14",
+      "family": "未分类1",
+      "capture_id": "pipe_20261117_183736_335",
+      "png_sha256": "b92301bf2fb2c6bc60fa64c0e10eb612f7b5e59f500076bcb4c03a14af621478",
+      "label_sha256": "a40a9f2843c374fb4928af170d953d74a77244f6646d958901a2ae4083c9c854",
+      "edge_review": {
+        "4": "cut",
+        "5": "cut"
+      }
+    },
+    {
+      "alias": "未分类15",
+      "family": "未分类1",
+      "capture_id": "pipe_20261117_183820_023",
+      "png_sha256": "cf26ab2b49ba07a16babc68f8921c02402cdc66469ae5af8693c7bc17b69cbd8",
+      "label_sha256": "2c12e64bfc0832e185cf3ac6cdc3ffe84fcf40b471531501b617a15a73b1f8c9",
+      "edge_review": {
+        "5": "whole",
+        "11": "cut"
+      }
+    }
+  ]
+}

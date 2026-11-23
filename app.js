@@ -280,6 +280,11 @@
     const meta = [`${result.width || "?"} × ${result.height || "?"}`, pipeId || "最新结果"];
     if (result.result_ready_ms) meta.push(`触发至可取图 ${Math.round(result.result_ready_ms)} ms`);
     else if (result.elapsed_ms) meta.push(`展开算法 ${Math.round(result.elapsed_ms)} ms`);
+    const seam = result.panorama_seam;
+    if (seam?.status === "no_clear_column") meta.push(`无共同空隙，切口仍经过 ${seam.crossing_candidates} 个候选孔，请复核`);
+    else if (seam?.status === "limited_clearance") meta.push("切口已避孔，但边缘余量不足");
+    else if (seam?.status === "no_candidates") meta.push("未找到孔候选，保留标定起点");
+    else if (seam?.status === "shifted") meta.push(`已避开孔口（圆周起点 ${seam.cut_x} px）`);
     if (result.archive_status === "failed") meta.push("展开图归档失败，请检查磁盘和日志");
     else if (result.archive_status === "pending") meta.push("展开图后台归档中");
     if (result.raw_archive_error) meta.push("原图归档失败，请检查磁盘和日志");

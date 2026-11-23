@@ -2,6 +2,7 @@
   "input_width": 1792,
   "output_width": 1536,
   "output_height": 10000,
+  "panorama_seam": "auto",
   "trim_px": 5,
   "blend_px": 20,
   "max_view_deg": 68,

@@ -18,7 +18,7 @@ import threading
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from contextlib import contextmanager
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from pathlib import Path
 from tempfile import NamedTemporaryFile
@@ -531,6 +531,7 @@ class HikRobotService:
                     "message": unwrapped.get("message", ""),
                     "elapsed_ms": unwrapped.get("elapsed_ms", 0),
                     "hole_candidate_count": unwrapped.get("hole_candidate_count", 0),
+                    "panorama_seam": unwrapped.get("panorama_seam"),
                 }
                 return
         except Exception:
@@ -1382,8 +1383,10 @@ class HikRobotService:
                 if timeline.get("last_frame_epoch") is not None:
                     timeline["durations_ms"]["result_ready_after_last_frame"] = round(
                         (unwrapped_ready - timeline["last_frame_epoch"]) * 1000.0, 2)
+                seam = getattr(bridge_result, "panorama_seam", None)
                 composite_record = {
                     "file": "",
+                    "panorama_seam": asdict(seam) if seam is not None else None,
                     "width": unwrapped_width,
                     "height": unwrapped_height,
                     "angle_order": [0, 90, 180, 270],

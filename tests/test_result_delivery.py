@@ -11,6 +11,7 @@ import cv2
 import numpy as np
 
 from hikrobot_camera import FramePacket, HikRobotService
+from tube_unwrap.panorama_seam import PanoramaSeam
 
 
 class ResultDeliveryTest(unittest.TestCase):
@@ -29,7 +30,7 @@ class ResultDeliveryTest(unittest.TestCase):
         self.image = np.arange(24, dtype=np.uint8).reshape(6, 4)
         self.service.unwrap_bridge = SimpleNamespace(process_packets=lambda _, *, output_size: SimpleNamespace(
             ok=True, image=self.image, elapsed_ms=1, status="ok", message="", hole_count=0,
-            bounds=(), input_shapes=((4, 6),) * 4))
+            bounds=(), input_shapes=((4, 6),) * 4, panorama_seam=PanoramaSeam(1, "shifted", 1, 0)))
 
     def frames(self, stamp):
         return {i: FramePacket(i, 4, 6, 0, self.image.tobytes(), captured_at=stamp) for i in range(4)}
@@ -74,6 +75,9 @@ class ResultDeliveryTest(unittest.TestCase):
         self.service._save_pipe(self.frames(1000))
         info = result.result(timeout=2)
         self.assertEqual(info["pipe_id"], self.service.latest_unwrapped_info["pipe_id"])
+        self.assertEqual(info["panorama_seam"]["cut_x"], 1)
+        manifest = json.loads((Path(info["file"]).parent / "capture.json").read_text("utf-8"))
+        self.assertEqual(manifest["unwrapped"]["panorama_seam"], info["panorama_seam"])
         out = self.service.config["output_dir"]
         with (patch.object(HikRobotService, "_load_settings", lambda s: s.config.update(output_dir=out)),
               patch.object(HikRobotService, "_initialize_sdk"), patch.object(HikRobotService, "_log")):
@@ -81,6 +85,7 @@ class ResultDeliveryTest(unittest.TestCase):
         self.addCleanup(restored.executor.shutdown, wait=True)
         self.addCleanup(restored.preview_executor.shutdown, wait=True)
         self.assertEqual(restored.get_latest_unwrapped(info["pipe_id"])[0], self.service.get_latest_unwrapped()[0])
+        self.assertEqual(restored.get_state()["latest_unwrapped"]["panorama_seam"], info["panorama_seam"])
 
     def test_old_capture_cannot_replace_newer_result_or_return_wrong_pixels(self):
         self.service._save_pipe(self.frames(2000))

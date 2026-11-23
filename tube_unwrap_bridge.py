@@ -7,6 +7,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from pathlib import Path
+from time import perf_counter
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 
 import cv2
@@ -14,6 +15,7 @@ import numpy as np
 
 from tube_unwrap import HoleSettings, Recipe, TubeUnwrapper, UnwrapStatus
 from tube_unwrap.geometry import CameraCalibration
+from tube_unwrap.panorama_seam import PanoramaSeam, present_panorama
 from unwrap_output import OutputSizes
 
 ROOT = Path(__file__).resolve().parent
@@ -29,6 +31,7 @@ class BridgeResult:
     hole_count: int
     bounds: Tuple[Tuple[float, float, float, float], ...]
     input_shapes: Tuple[Tuple[int, int], ...]
+    panorama_seam: Optional[PanoramaSeam] = None
 
     @property
     def ok(self) -> bool:
@@ -67,6 +70,8 @@ class TubeUnwrapBridge:
         self.recipe_path = Path(recipe_path)
         self.localization_executor = localization_executor
         self.config = json.loads(self.recipe_path.read_text(encoding="utf-8"))
+        if self.config.get("panorama_seam", "auto") not in ("auto", "fixed"):
+            raise ValueError("展开图切口模式必须为 auto 或 fixed")
         if len(self.config.get("cameras", [])) != 4:
             raise ValueError("拼接配方必须包含四台相机")
 
@@ -173,15 +178,23 @@ class TubeUnwrapBridge:
                 input_shapes=tuple(shapes),
             )
 
+        seam = None
+        image = result.image
+        seam_ms = 0.0
+        if image is not None and result.status == UnwrapStatus.OK:
+            started = perf_counter()
+            image, seam = present_panorama(image, result.holes, self.config.get("panorama_seam", "auto"))
+            seam_ms = (perf_counter() - started) * 1000.0
         calibration_bounds = result.camera_bounds or tuple(
             (float(camera.left), float(camera.right), float(camera.top), float(camera.bottom))
             for camera in recipe.cameras
         )
         return BridgeResult(
             status=result.status.value,
-            image=result.image,
+            image=image,
+            panorama_seam=seam,
             message=result.message,
-            elapsed_ms=float(result.elapsed_ms),
+            elapsed_ms=float(result.elapsed_ms) + seam_ms,
             hole_count=len(result.holes),
             bounds=calibration_bounds,
             input_shapes=tuple(shapes),

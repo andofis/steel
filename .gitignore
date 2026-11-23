@@ -2,6 +2,7 @@ __pycache__/
 *.py[cod]
 settings.json
 captures/
+/datasets/
 *.log
 *.tmp
 cam_*_genicam.xml
