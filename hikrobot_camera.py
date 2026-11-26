@@ -431,6 +431,7 @@ class CameraWorker:
 
 class HikRobotService:
     def __init__(self) -> None:
+        self.on_panorama_ready = None
         self.lock = threading.RLock()
         self.preview_lock = threading.Lock()
         self.preview_condition = threading.Condition()
@@ -1334,6 +1335,14 @@ class HikRobotService:
             "四路相机采集明细": camera_rows,
         }
 
+    def _notify_inspection(self, png, info: Dict[str, Any], folder: Path) -> None:
+        callback = self.on_panorama_ready
+        if callback is not None:
+            try:
+                callback(png, info, folder)
+            except Exception as exc:
+                self._log("ERROR", "无法安排孔洞检测 %s: %s" % (info["pipe_id"], exc))
+
     def _save_pipe(self, frames: Dict[int, FramePacket], timeline: Optional[Dict[str, Any]] = None) -> None:
         complete = len(frames) == 4
         first_frame_epoch = min(packet.captured_at for packet in frames.values())
@@ -1387,6 +1396,7 @@ class HikRobotService:
                 composite_record = {
                     "file": "",
                     "panorama_seam": asdict(seam) if seam is not None else None,
+                    "phase_calibration_id": getattr(bridge_result, "phase_calibration_id", None),
                     "width": unwrapped_width,
                     "height": unwrapped_height,
                     "angle_order": [0, 90, 180, 270],
@@ -1399,6 +1409,10 @@ class HikRobotService:
                     "camera_bounds": bridge_result.bounds,
                     "input_shapes": bridge_result.input_shapes,
                 }
+                self._notify_inspection(png if complete else None, dict(
+                    composite_record, pipe_id=pipe_id, last_frame_epoch=timeline.get("last_frame_epoch"),
+                    failure_reason=None if complete else "四路原图不完整，请复核采集"
+                ), folder)
                 with self.result_condition:
                     # Work may overlap: a slow older capture must never replace a newer image.
                     if first_frame_epoch >= self._latest_capture_epoch:
@@ -1441,6 +1455,8 @@ class HikRobotService:
                 self.last_error = str(composite_error)
                 add_timeline_event(timeline, "unwrap_failed")
                 self._log("ERROR", "展开图生成失败: %s" % composite_error)
+                self._notify_inspection(None, {"pipe_id": pipe_id, "failure_reason":
+                                               f"展开图生成失败，{composite_error}"}, folder)
 
             with self.lock:
                 if self.save_pipe_id == pipe_id:

@@ -16,6 +16,40 @@ from unwrap_output import OutputSizes
 
 
 class SizeGeometryTest(unittest.TestCase):
+    def test_uses_recalibrated_phases_only_for_nominal_tube_width(self):
+        bridge = TubeUnwrapBridge()
+        legacy = TubeUnwrapBridge()
+        legacy.config.pop("nominal_phase_calibration", None)
+        for fraction in (1, .82):
+            with self.subTest(width_fraction=fraction):
+                frames = []
+                for i, camera in enumerate(bridge.config["cameras"]):
+                    img = np.full((1000, 1792), 40, np.uint8)
+                    center = (camera["left"] + camera["right"]) / 2
+                    radius = (camera["right"] - camera["left"]) * fraction / 2
+                    left, right = round(center - radius), round(center + radius)
+                    img[160:841, left:right + 1] = 155
+                    cv2.circle(img, (round(center), 275 + i * 135), 22, 7, -1)
+                    frames.append(img)
+                bounds = [(160, 840)] * 4
+                updated = TubeUnwrapper(bridge._build_recipe(frames, bounds, (1152, 512))).process(frames)
+                baseline = TubeUnwrapper(legacy._build_recipe(frames, bounds, (1152, 512))).process(frames)
+                for result in (updated, baseline):
+                    self.assertEqual(result.status, UnwrapStatus.OK, result.message)
+                    self.assertEqual(len(result.holes), 4)
+                if fraction == 1:
+                    self.assertTrue(getattr(updated, "phase_calibration_id", None))
+                    self.assertIsNone(baseline.phase_calibration_id)
+                    config = bridge.config["nominal_phase_calibration"]
+                    for old, new, phase in zip(baseline.holes, updated.holes, config["phases"], strict=True):
+                        self.assertEqual(old.camera, new.camera)
+                        difference = (new.x - old.x + 576) % 1152 - 576
+                        old_phase = bridge.config["cameras"][old.camera - 1]["phase"]
+                        self.assertAlmostEqual(difference, .75 * (phase - old_phase), places=3)
+                else:
+                    self.assertIsNone(updated.phase_calibration_id)
+                    np.testing.assert_array_equal(updated.image, baseline.image)
+
     def test_direct_grid_preserves_seam_hole_and_normalized_positions(self):
         bridge = TubeUnwrapBridge()
         bridge.config["output_height"] = 1025

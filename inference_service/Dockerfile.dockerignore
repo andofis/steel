@@ -1,0 +1,9 @@
+**
+!inference_service/
+!inference_service/*.py
+!inference_service/requirements.txt
+!__init__.py
+!app.py
+!backends.py
+!pipeline.py
+!requirements.txt

@@ -1,0 +1,2590 @@
+{
+  "model_sha256": "ec6c9cf8fea6b48aaa14ac9bdd67591cfab7e387ef200de20b8c9552d1bd56a2",
+  "ground_truth_origin": "SAM 3 master masks of the grouped holdout",
+  "includes_candidate_regions": true,
+  "images": 10,
+  "size_wh": [
+    1152,
+    7500
+  ],
+  "confidence": 0.25,
+  "match_iou": 0.5,
+  "batch": 8,
+  "precision": 0.9649122807017544,
+  "recall": 1.0,
+  "mean_match_iou": 0.960907950877613,
+  "min_match_iou": 0.7715656868626275,
+  "count_iou_at_least_90": 108,
+  "mean_model_masks_per_pipe": 11.4,
+  "matched": 110,
+  "ground_truth_instances": 110,
+  "missed": 0,
+  "unmatched_predictions": 4,
+  "unmatched_prediction_details": [
+    {
+      "source": "OLD_U12",
+      "index": 12,
+      "matched_id": null,
+      "mask_iou": null,
+      "conf": 0.757812,
+      "mask_pixels": 4078,
+      "pending_overlap_fraction": 0.0,
+      "xywh_periodic": [
+        7,
+        3175,
+        57,
+        87
+      ],
+      "at_tile_edge": true,
+      "source_tile": [
+        576,
+        3072
+      ],
+      "best_reference_iou": 0.478800289086967
+    },
+    {
+      "source": "EXTRA_016",
+      "index": 12,
+      "matched_id": null,
+      "mask_iou": null,
+      "conf": 0.929199,
+      "mask_pixels": 2174,
+      "pending_overlap_fraction": 0.0,
+      "xywh_periodic": [
+        606,
+        3198,
+        34,
+        85
+      ],
+      "at_tile_edge": true,
+      "source_tile": [
+        0,
+        2688
+      ],
+      "best_reference_iou": 0.23717090584560463
+    },
+    {
+      "source": "EXTRA_016",
+      "index": 13,
+      "matched_id": null,
+      "mask_iou": null,
+      "conf": 0.418701,
+      "mask_pixels": 177,
+      "pending_overlap_fraction": 0.0,
+      "xywh_periodic": [
+        633,
+        3938,
+        7,
+        35
+      ],
+      "at_tile_edge": true,
+      "source_tile": [
+        0,
+        3456
+      ],
+      "best_reference_iou": 0.015104489964825161
+    },
+    {
+      "source": "EXTRA_016",
+      "index": 14,
+      "matched_id": null,
+      "mask_iou": null,
+      "conf": 0.275146,
+      "mask_pixels": 509,
+      "pending_overlap_fraction": 0.0,
+      "xywh_periodic": [
+        578,
+        768,
+        54,
+        12
+      ],
+      "at_tile_edge": true,
+      "source_tile": [
+        576,
+        768
+      ],
+      "best_reference_iou": 0.0
+    }
+  ],
+  "preprocessing_inference_merge_ms_p50": 549.46,
+  "preprocessing_inference_merge_ms_max": 3662.39,
+  "results": [
+    {
+      "id": "OLD_U11",
+      "alias": "未分类11",
+      "group": "未分类1",
+      "source_cut_x": 740,
+      "gt": 11,
+      "predicted": 11,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 6,
+          "mask_iou": 0.9648251603558866,
+          "conf": 0.952637,
+          "mask_pixels": 4795,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            268,
+            4710,
+            74,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            4224
+          ],
+          "best_reference_iou": 0.9648251603558866
+        },
+        {
+          "index": 2,
+          "matched_id": 1,
+          "mask_iou": 0.9363730569948187,
+          "conf": 0.947754,
+          "mask_pixels": 4711,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            698,
+            925,
+            75,
+            76
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            384
+          ],
+          "best_reference_iou": 0.9363730569948187
+        },
+        {
+          "index": 3,
+          "matched_id": 10,
+          "mask_iou": 0.9544446684136263,
+          "conf": 0.946777,
+          "mask_pixels": 4897,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            674,
+            6711,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            6528
+          ],
+          "best_reference_iou": 0.9544446684136263
+        },
+        {
+          "index": 4,
+          "matched_id": 7,
+          "mask_iou": 0.9562516878206859,
+          "conf": 0.946289,
+          "mask_pixels": 3682,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            170,
+            4995,
+            65,
+            70
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            4608
+          ],
+          "best_reference_iou": 0.9562516878206859
+        },
+        {
+          "index": 5,
+          "matched_id": 3,
+          "mask_iou": 0.9575297097214105,
+          "conf": 0.945801,
+          "mask_pixels": 5061,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            720,
+            3630,
+            74,
+            83
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            3456
+          ],
+          "best_reference_iou": 0.9575297097214105
+        },
+        {
+          "index": 6,
+          "matched_id": 9,
+          "mask_iou": 0.964858825919155,
+          "conf": 0.944336,
+          "mask_pixels": 4847,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1143,
+            6575,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            6144
+          ],
+          "best_reference_iou": 0.964858825919155
+        },
+        {
+          "index": 7,
+          "matched_id": 2,
+          "mask_iou": 0.9589098532494759,
+          "conf": 0.943848,
+          "mask_pixels": 4749,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            286,
+            1470,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            1152
+          ],
+          "best_reference_iou": 0.9589098532494759
+        },
+        {
+          "index": 8,
+          "matched_id": 5,
+          "mask_iou": 0.9491320145337101,
+          "conf": 0.943359,
+          "mask_pixels": 4865,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            914,
+            4507,
+            75,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            4224
+          ],
+          "best_reference_iou": 0.9491320145337101
+        },
+        {
+          "index": 9,
+          "matched_id": 8,
+          "mask_iou": 0.9652210349884769,
+          "conf": 0.941406,
+          "mask_pixels": 4713,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            181,
+            5470,
+            74,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            4992
+          ],
+          "best_reference_iou": 0.9652210349884769
+        },
+        {
+          "index": 10,
+          "matched_id": 11,
+          "mask_iou": 0.9612060301507538,
+          "conf": 0.935547,
+          "mask_pixels": 4903,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            979,
+            6846,
+            76,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            6528
+          ],
+          "best_reference_iou": 0.9612060301507538
+        },
+        {
+          "index": 11,
+          "matched_id": 4,
+          "mask_iou": 0.9535614133482894,
+          "conf": 0.924316,
+          "mask_pixels": 8676,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            712,
+            4298,
+            109,
+            111
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            3840
+          ],
+          "best_reference_iou": 0.9535614133482894
+        }
+      ],
+      "milliseconds": 3662.39,
+      "raw_tiles_predictions": 53,
+      "tiles": 76
+    },
+    {
+      "id": "OLD_U12",
+      "alias": "未分类12",
+      "group": "未分类1",
+      "source_cut_x": 337,
+      "gt": 11,
+      "predicted": 12,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [
+        12
+      ],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 6,
+          "mask_iou": 0.9660455486542443,
+          "conf": 0.950684,
+          "mask_pixels": 4796,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            489,
+            2775,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2304
+          ],
+          "best_reference_iou": 0.9660455486542443
+        },
+        {
+          "index": 2,
+          "matched_id": 10,
+          "mask_iou": 0.9667013527575442,
+          "conf": 0.949707,
+          "mask_pixels": 4768,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            475,
+            6010,
+            73,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            5760
+          ],
+          "best_reference_iou": 0.9667013527575442
+        },
+        {
+          "index": 3,
+          "matched_id": 9,
+          "mask_iou": 0.9622086920008398,
+          "conf": 0.949219,
+          "mask_pixels": 4731,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            32,
+            3867,
+            74,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            3456
+          ],
+          "best_reference_iou": 0.9622086920008398
+        },
+        {
+          "index": 4,
+          "matched_id": 5,
+          "mask_iou": 0.9662625197680548,
+          "conf": 0.947754,
+          "mask_pixels": 3788,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            596,
+            2491,
+            66,
+            70
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            2304
+          ],
+          "best_reference_iou": 0.9662625197680548
+        },
+        {
+          "index": 5,
+          "matched_id": 4,
+          "mask_iou": 0.9690641918020109,
+          "conf": 0.947266,
+          "mask_pixels": 5148,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            575,
+            1998,
+            75,
+            85
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            1536
+          ],
+          "best_reference_iou": 0.9690641918020109
+        },
+        {
+          "index": 6,
+          "matched_id": 11,
+          "mask_iou": 0.9674690956408588,
+          "conf": 0.946289,
+          "mask_pixels": 4578,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            56,
+            6538,
+            74,
+            76
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            6144
+          ],
+          "best_reference_iou": 0.9674690956408588
+        },
+        {
+          "index": 7,
+          "matched_id": 7,
+          "mask_iou": 0.966379827896738,
+          "conf": 0.945801,
+          "mask_pixels": 4977,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            990,
+            2991,
+            76,
+            81
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            2688
+          ],
+          "best_reference_iou": 0.966379827896738
+        },
+        {
+          "index": 8,
+          "matched_id": 3,
+          "mask_iou": 0.9672436255350828,
+          "conf": 0.942871,
+          "mask_pixels": 5300,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            752,
+            849,
+            75,
+            86
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            384
+          ],
+          "best_reference_iou": 0.9672436255350828
+        },
+        {
+          "index": 9,
+          "matched_id": 1,
+          "mask_iou": 0.9661050545094153,
+          "conf": 0.941406,
+          "mask_pixels": 5026,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            70,
+            718,
+            74,
+            84
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.9661050545094153
+        },
+        {
+          "index": 10,
+          "matched_id": 2,
+          "mask_iou": 0.9562310030395137,
+          "conf": 0.935547,
+          "mask_pixels": 4855,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            914,
+            575,
+            75,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            384
+          ],
+          "best_reference_iou": 0.9562310030395137
+        },
+        {
+          "index": 11,
+          "matched_id": 8,
+          "mask_iou": 0.7715656868626275,
+          "conf": 0.919434,
+          "mask_pixels": 6567,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            36,
+            3179,
+            84,
+            101
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2688
+          ],
+          "best_reference_iou": 0.7715656868626275
+        },
+        {
+          "index": 12,
+          "matched_id": null,
+          "mask_iou": null,
+          "conf": 0.757812,
+          "mask_pixels": 4078,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            7,
+            3175,
+            57,
+            87
+          ],
+          "at_tile_edge": true,
+          "source_tile": [
+            576,
+            3072
+          ],
+          "best_reference_iou": 0.478800289086967
+        }
+      ],
+      "milliseconds": 742.01,
+      "raw_tiles_predictions": 58,
+      "tiles": 76
+    },
+    {
+      "id": "OLD_U13",
+      "alias": "未分类13",
+      "group": "未分类1",
+      "source_cut_x": 1403,
+      "gt": 11,
+      "predicted": 11,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 2,
+          "mask_iou": 0.9717959352965575,
+          "conf": 0.951172,
+          "mask_pixels": 4767,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            873,
+            725,
+            74,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            384
+          ],
+          "best_reference_iou": 0.9717959352965575
+        },
+        {
+          "index": 2,
+          "matched_id": 9,
+          "mask_iou": 0.9650432050274941,
+          "conf": 0.949707,
+          "mask_pixels": 5059,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            840,
+            3881,
+            74,
+            83
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            3456
+          ],
+          "best_reference_iou": 0.9650432050274941
+        },
+        {
+          "index": 3,
+          "matched_id": 1,
+          "mask_iou": 0.9735640928109547,
+          "conf": 0.947754,
+          "mask_pixels": 5240,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            570,
+            586,
+            75,
+            86
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            384
+          ],
+          "best_reference_iou": 0.9735640928109547
+        },
+        {
+          "index": 4,
+          "matched_id": 5,
+          "mask_iou": 0.9526372443487621,
+          "conf": 0.947754,
+          "mask_pixels": 3675,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            252,
+            2495,
+            64,
+            70
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2304
+          ],
+          "best_reference_iou": 0.9526372443487621
+        },
+        {
+          "index": 5,
+          "matched_id": 6,
+          "mask_iou": 0.9664202745512144,
+          "conf": 0.947754,
+          "mask_pixels": 4713,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            144,
+            2779,
+            74,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2304
+          ],
+          "best_reference_iou": 0.9664202745512144
+        },
+        {
+          "index": 6,
+          "matched_id": 10,
+          "mask_iou": 0.9648502495840267,
+          "conf": 0.943848,
+          "mask_pixels": 4771,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            120,
+            6000,
+            74,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            5760
+          ],
+          "best_reference_iou": 0.9648502495840267
+        },
+        {
+          "index": 7,
+          "matched_id": 4,
+          "mask_iou": 0.9677923091938317,
+          "conf": 0.943359,
+          "mask_pixels": 5076,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            230,
+            2001,
+            74,
+            85
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            1536
+          ],
+          "best_reference_iou": 0.9677923091938317
+        },
+        {
+          "index": 8,
+          "matched_id": 3,
+          "mask_iou": 0.9670445004198153,
+          "conf": 0.942871,
+          "mask_pixels": 4702,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            409,
+            865,
+            75,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.9670445004198153
+        },
+        {
+          "index": 9,
+          "matched_id": 7,
+          "mask_iou": 0.9691272511379379,
+          "conf": 0.941895,
+          "mask_pixels": 5044,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            644,
+            2995,
+            75,
+            83
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            2688
+          ],
+          "best_reference_iou": 0.9691272511379379
+        },
+        {
+          "index": 10,
+          "matched_id": 11,
+          "mask_iou": 0.9618098796180988,
+          "conf": 0.938965,
+          "mask_pixels": 4775,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            851,
+            6526,
+            75,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            6144
+          ],
+          "best_reference_iou": 0.9618098796180988
+        },
+        {
+          "index": 11,
+          "matched_id": 8,
+          "mask_iou": 0.9478794642857142,
+          "conf": 0.931152,
+          "mask_pixels": 8722,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            813,
+            3175,
+            106,
+            113
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            2688
+          ],
+          "best_reference_iou": 0.9478794642857142
+        }
+      ],
+      "milliseconds": 594.14,
+      "raw_tiles_predictions": 58,
+      "tiles": 76
+    },
+    {
+      "id": "OLD_U14",
+      "alias": "未分类14",
+      "group": "未分类1",
+      "source_cut_x": 1013,
+      "gt": 11,
+      "predicted": 11,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 11,
+          "mask_iou": 0.9628691983122363,
+          "conf": 0.955078,
+          "mask_pixels": 4689,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            573,
+            6518,
+            75,
+            77
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            6144
+          ],
+          "best_reference_iou": 0.9628691983122363
+        },
+        {
+          "index": 2,
+          "matched_id": 1,
+          "mask_iou": 0.9622602168473728,
+          "conf": 0.951172,
+          "mask_pixels": 4741,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            280,
+            585,
+            74,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.9622602168473728
+        },
+        {
+          "index": 3,
+          "matched_id": 10,
+          "mask_iou": 0.9658436213991769,
+          "conf": 0.951172,
+          "mask_pixels": 4804,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            985,
+            5994,
+            75,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            5760
+          ],
+          "best_reference_iou": 0.9658436213991769
+        },
+        {
+          "index": 4,
+          "matched_id": 4,
+          "mask_iou": 0.9697742885181551,
+          "conf": 0.947754,
+          "mask_pixels": 5062,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1088,
+            1990,
+            75,
+            82
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            1536
+          ],
+          "best_reference_iou": 0.9697742885181551
+        },
+        {
+          "index": 5,
+          "matched_id": 6,
+          "mask_iou": 0.9681473456121343,
+          "conf": 0.946777,
+          "mask_pixels": 4576,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1004,
+            2785,
+            74,
+            76
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            2304
+          ],
+          "best_reference_iou": 0.9681473456121343
+        },
+        {
+          "index": 6,
+          "matched_id": 5,
+          "mask_iou": 0.9643962848297214,
+          "conf": 0.945801,
+          "mask_pixels": 3830,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1110,
+            2497,
+            66,
+            71
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            2304
+          ],
+          "best_reference_iou": 0.9643962848297214
+        },
+        {
+          "index": 7,
+          "matched_id": 2,
+          "mask_iou": 0.9641400042946102,
+          "conf": 0.944336,
+          "mask_pixels": 4634,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            587,
+            719,
+            74,
+            77
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            384
+          ],
+          "best_reference_iou": 0.9641400042946102
+        },
+        {
+          "index": 8,
+          "matched_id": 9,
+          "mask_iou": 0.9679512386944553,
+          "conf": 0.942383,
+          "mask_pixels": 5077,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            549,
+            3876,
+            74,
+            84
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            3456
+          ],
+          "best_reference_iou": 0.9679512386944553
+        },
+        {
+          "index": 9,
+          "matched_id": 7,
+          "mask_iou": 0.9657489703013223,
+          "conf": 0.939941,
+          "mask_pixels": 4577,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            355,
+            2988,
+            74,
+            76
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2688
+          ],
+          "best_reference_iou": 0.9657489703013223
+        },
+        {
+          "index": 10,
+          "matched_id": 3,
+          "mask_iou": 0.957429718875502,
+          "conf": 0.938477,
+          "mask_pixels": 4801,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            116,
+            853,
+            73,
+            81
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.957429718875502
+        },
+        {
+          "index": 11,
+          "matched_id": 8,
+          "mask_iou": 0.8978562421185372,
+          "conf": 0.930176,
+          "mask_pixels": 7987,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            537,
+            3170,
+            99,
+            108
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2688
+          ],
+          "best_reference_iou": 0.8978562421185372
+        }
+      ],
+      "milliseconds": 634.24,
+      "raw_tiles_predictions": 58,
+      "tiles": 76
+    },
+    {
+      "id": "OLD_U15",
+      "alias": "未分类15",
+      "group": "未分类1",
+      "source_cut_x": 923,
+      "gt": 11,
+      "predicted": 11,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 9,
+          "mask_iou": 0.9627316260670414,
+          "conf": 0.950195,
+          "mask_pixels": 4720,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            120,
+            6601,
+            73,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            6144
+          ],
+          "best_reference_iou": 0.9627316260670414
+        },
+        {
+          "index": 2,
+          "matched_id": 10,
+          "mask_iou": 0.9620834164837357,
+          "conf": 0.949219,
+          "mask_pixels": 4893,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            798,
+            6729,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            6528
+          ],
+          "best_reference_iou": 0.9620834164837357
+        },
+        {
+          "index": 3,
+          "matched_id": 11,
+          "mask_iou": 0.9590984974958264,
+          "conf": 0.948242,
+          "mask_pixels": 4735,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1105,
+            6866,
+            74,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            6860
+          ],
+          "best_reference_iou": 0.9590984974958264
+        },
+        {
+          "index": 4,
+          "matched_id": 7,
+          "mask_iou": 0.9610250934329952,
+          "conf": 0.947266,
+          "mask_pixels": 3714,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            297,
+            5018,
+            65,
+            70
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            4608
+          ],
+          "best_reference_iou": 0.9610250934329952
+        },
+        {
+          "index": 5,
+          "matched_id": 2,
+          "mask_iou": 0.9675583380762663,
+          "conf": 0.946777,
+          "mask_pixels": 5239,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            414,
+            1482,
+            75,
+            86
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            1152
+          ],
+          "best_reference_iou": 0.9675583380762663
+        },
+        {
+          "index": 6,
+          "matched_id": 8,
+          "mask_iou": 0.9609796596097966,
+          "conf": 0.946777,
+          "mask_pixels": 4785,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            307,
+            5482,
+            74,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            4992
+          ],
+          "best_reference_iou": 0.9609796596097966
+        },
+        {
+          "index": 7,
+          "matched_id": 3,
+          "mask_iou": 0.962070410729254,
+          "conf": 0.945801,
+          "mask_pixels": 4694,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            847,
+            3644,
+            74,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            3456
+          ],
+          "best_reference_iou": 0.962070410729254
+        },
+        {
+          "index": 8,
+          "matched_id": 6,
+          "mask_iou": 0.9650571791613723,
+          "conf": 0.945801,
+          "mask_pixels": 4669,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            395,
+            4736,
+            74,
+            77
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            4224
+          ],
+          "best_reference_iou": 0.9650571791613723
+        },
+        {
+          "index": 9,
+          "matched_id": 1,
+          "mask_iou": 0.9612619808306709,
+          "conf": 0.944336,
+          "mask_pixels": 4887,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            823,
+            926,
+            76,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            384
+          ],
+          "best_reference_iou": 0.9612619808306709
+        },
+        {
+          "index": 10,
+          "matched_id": 5,
+          "mask_iou": 0.9626955475330926,
+          "conf": 0.939453,
+          "mask_pixels": 4964,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1043,
+            4523,
+            75,
+            81
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            4224
+          ],
+          "best_reference_iou": 0.9626955475330926
+        },
+        {
+          "index": 11,
+          "matched_id": 4,
+          "mask_iou": 0.951266613654436,
+          "conf": 0.926758,
+          "mask_pixels": 8519,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            839,
+            4309,
+            107,
+            112
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            4224
+          ],
+          "best_reference_iou": 0.951266613654436
+        }
+      ],
+      "milliseconds": 550.21,
+      "raw_tiles_predictions": 58,
+      "tiles": 76
+    },
+    {
+      "id": "EXTRA_016",
+      "alias": "EXTRA_016",
+      "group": "焊缝2",
+      "source_cut_x": 1145,
+      "gt": 11,
+      "predicted": 14,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [
+        12,
+        13,
+        14
+      ],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 4,
+          "mask_iou": 0.9732199787460148,
+          "conf": 0.953613,
+          "mask_pixels": 4696,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            12,
+            2024,
+            75,
+            77
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            1536
+          ],
+          "best_reference_iou": 0.9732199787460148
+        },
+        {
+          "index": 2,
+          "matched_id": 7,
+          "mask_iou": 0.9589659417316373,
+          "conf": 0.951172,
+          "mask_pixels": 4794,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            440,
+            3013,
+            75,
+            77
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2688
+          ],
+          "best_reference_iou": 0.9589659417316373
+        },
+        {
+          "index": 3,
+          "matched_id": 1,
+          "mask_iou": 0.9716942984229681,
+          "conf": 0.949219,
+          "mask_pixels": 4913,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            360,
+            581,
+            74,
+            81
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            384
+          ],
+          "best_reference_iou": 0.9716942984229681
+        },
+        {
+          "index": 4,
+          "matched_id": 6,
+          "mask_iou": 0.960673058109959,
+          "conf": 0.949219,
+          "mask_pixels": 5098,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1080,
+            2788,
+            75,
+            83
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            2304
+          ],
+          "best_reference_iou": 0.960673058109959
+        },
+        {
+          "index": 5,
+          "matched_id": 3,
+          "mask_iou": 0.9793217535153019,
+          "conf": 0.947754,
+          "mask_pixels": 4814,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            193,
+            853,
+            74,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.9793217535153019
+        },
+        {
+          "index": 6,
+          "matched_id": 9,
+          "mask_iou": 0.9662092975629736,
+          "conf": 0.947754,
+          "mask_pixels": 4872,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            637,
+            3914,
+            75,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            3456
+          ],
+          "best_reference_iou": 0.9662092975629736
+        },
+        {
+          "index": 7,
+          "matched_id": 5,
+          "mask_iou": 0.9622489959839358,
+          "conf": 0.944824,
+          "mask_pixels": 3723,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            35,
+            2506,
+            65,
+            69
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2304
+          ],
+          "best_reference_iou": 0.9622489959839358
+        },
+        {
+          "index": 8,
+          "matched_id": 10,
+          "mask_iou": 0.9725380819566617,
+          "conf": 0.944336,
+          "mask_pixels": 4642,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1080,
+            6002,
+            73,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            5760
+          ],
+          "best_reference_iou": 0.9725380819566617
+        },
+        {
+          "index": 9,
+          "matched_id": 11,
+          "mask_iou": 0.9498841861444515,
+          "conf": 0.943848,
+          "mask_pixels": 4744,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            672,
+            6529,
+            75,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            6144
+          ],
+          "best_reference_iou": 0.9498841861444515
+        },
+        {
+          "index": 10,
+          "matched_id": 2,
+          "mask_iou": 0.9590557760601629,
+          "conf": 0.941406,
+          "mask_pixels": 4778,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            670,
+            717,
+            73,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            384
+          ],
+          "best_reference_iou": 0.9590557760601629
+        },
+        {
+          "index": 11,
+          "matched_id": 8,
+          "mask_iou": 0.9343697945585786,
+          "conf": 0.929688,
+          "mask_pixels": 8503,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            616,
+            3200,
+            103,
+            112
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            2688
+          ],
+          "best_reference_iou": 0.9343697945585786
+        },
+        {
+          "index": 12,
+          "matched_id": null,
+          "mask_iou": null,
+          "conf": 0.929199,
+          "mask_pixels": 2174,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            606,
+            3198,
+            34,
+            85
+          ],
+          "at_tile_edge": true,
+          "source_tile": [
+            0,
+            2688
+          ],
+          "best_reference_iou": 0.23717090584560463
+        },
+        {
+          "index": 13,
+          "matched_id": null,
+          "mask_iou": null,
+          "conf": 0.418701,
+          "mask_pixels": 177,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            633,
+            3938,
+            7,
+            35
+          ],
+          "at_tile_edge": true,
+          "source_tile": [
+            0,
+            3456
+          ],
+          "best_reference_iou": 0.015104489964825161
+        },
+        {
+          "index": 14,
+          "matched_id": null,
+          "mask_iou": null,
+          "conf": 0.275146,
+          "mask_pixels": 509,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            578,
+            768,
+            54,
+            12
+          ],
+          "at_tile_edge": true,
+          "source_tile": [
+            576,
+            768
+          ],
+          "best_reference_iou": 0.0
+        }
+      ],
+      "milliseconds": 519.17,
+      "raw_tiles_predictions": 53,
+      "tiles": 76
+    },
+    {
+      "id": "EXTRA_017",
+      "alias": "EXTRA_017",
+      "group": "焊缝2",
+      "source_cut_x": 319,
+      "gt": 11,
+      "predicted": 11,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 6,
+          "mask_iou": 0.9605600473279432,
+          "conf": 0.950195,
+          "mask_pixels": 5034,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            462,
+            2790,
+            75,
+            81
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2304
+          ],
+          "best_reference_iou": 0.9605600473279432
+        },
+        {
+          "index": 2,
+          "matched_id": 1,
+          "mask_iou": 0.9679060665362035,
+          "conf": 0.949219,
+          "mask_pixels": 5061,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            891,
+            584,
+            73,
+            83
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            384
+          ],
+          "best_reference_iou": 0.9679060665362035
+        },
+        {
+          "index": 3,
+          "matched_id": 9,
+          "mask_iou": 0.9634684865515857,
+          "conf": 0.94873,
+          "mask_pixels": 4957,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            14,
+            3887,
+            75,
+            82
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            3456
+          ],
+          "best_reference_iou": 0.9634684865515857
+        },
+        {
+          "index": 4,
+          "matched_id": 2,
+          "mask_iou": 0.9590880034093331,
+          "conf": 0.947754,
+          "mask_pixels": 4676,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            50,
+            727,
+            74,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.9590880034093331
+        },
+        {
+          "index": 5,
+          "matched_id": 10,
+          "mask_iou": 0.9654160553343115,
+          "conf": 0.946289,
+          "mask_pixels": 4752,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            454,
+            5979,
+            74,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            5760
+          ],
+          "best_reference_iou": 0.9654160553343115
+        },
+        {
+          "index": 6,
+          "matched_id": 4,
+          "mask_iou": 0.969453044375645,
+          "conf": 0.945801,
+          "mask_pixels": 4798,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            549,
+            2009,
+            74,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            1536
+          ],
+          "best_reference_iou": 0.969453044375645
+        },
+        {
+          "index": 7,
+          "matched_id": 5,
+          "mask_iou": 0.9542225730071034,
+          "conf": 0.945801,
+          "mask_pixels": 3800,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            570,
+            2508,
+            65,
+            70
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2304
+          ],
+          "best_reference_iou": 0.9542225730071034
+        },
+        {
+          "index": 8,
+          "matched_id": 11,
+          "mask_iou": 0.9643835616438357,
+          "conf": 0.943359,
+          "mask_pixels": 4713,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            39,
+            6517,
+            73,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            6144
+          ],
+          "best_reference_iou": 0.9643835616438357
+        },
+        {
+          "index": 9,
+          "matched_id": 3,
+          "mask_iou": 0.9640151515151515,
+          "conf": 0.942871,
+          "mask_pixels": 4710,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            725,
+            863,
+            75,
+            76
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            384
+          ],
+          "best_reference_iou": 0.9640151515151515
+        },
+        {
+          "index": 10,
+          "matched_id": 7,
+          "mask_iou": 0.9675169390195297,
+          "conf": 0.942871,
+          "mask_pixels": 4991,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            971,
+            3007,
+            76,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            2688
+          ],
+          "best_reference_iou": 0.9675169390195297
+        },
+        {
+          "index": 11,
+          "matched_id": 8,
+          "mask_iou": 0.9506685108344859,
+          "conf": 0.927734,
+          "mask_pixels": 8338,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1144,
+            3190,
+            106,
+            108
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            3072
+          ],
+          "best_reference_iou": 0.9506685108344859
+        }
+      ],
+      "milliseconds": 507.74,
+      "raw_tiles_predictions": 60,
+      "tiles": 76
+    },
+    {
+      "id": "EXTRA_018",
+      "alias": "EXTRA_018",
+      "group": "焊缝2",
+      "source_cut_x": 1253,
+      "gt": 11,
+      "predicted": 11,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 7,
+          "mask_iou": 0.9742497579864472,
+          "conf": 0.95166,
+          "mask_pixels": 5134,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            524,
+            2994,
+            76,
+            83
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2688
+          ],
+          "best_reference_iou": 0.9742497579864472
+        },
+        {
+          "index": 2,
+          "matched_id": 9,
+          "mask_iou": 0.9638099025651223,
+          "conf": 0.951172,
+          "mask_pixels": 5009,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            716,
+            3879,
+            76,
+            81
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            3456
+          ],
+          "best_reference_iou": 0.9638099025651223
+        },
+        {
+          "index": 3,
+          "matched_id": 11,
+          "mask_iou": 0.9613812832039231,
+          "conf": 0.949707,
+          "mask_pixels": 4888,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            750,
+            6520,
+            75,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            6144
+          ],
+          "best_reference_iou": 0.9613812832039231
+        },
+        {
+          "index": 4,
+          "matched_id": 10,
+          "mask_iou": 0.9608733246865543,
+          "conf": 0.948242,
+          "mask_pixels": 4602,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            10,
+            5982,
+            73,
+            77
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            5760
+          ],
+          "best_reference_iou": 0.9608733246865543
+        },
+        {
+          "index": 5,
+          "matched_id": 5,
+          "mask_iou": 0.9581881533101045,
+          "conf": 0.946289,
+          "mask_pixels": 3727,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            124,
+            2495,
+            64,
+            70
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2304
+          ],
+          "best_reference_iou": 0.9581881533101045
+        },
+        {
+          "index": 6,
+          "matched_id": 6,
+          "mask_iou": 0.9596375617792422,
+          "conf": 0.945801,
+          "mask_pixels": 4853,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            13,
+            2781,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2304
+          ],
+          "best_reference_iou": 0.9596375617792422
+        },
+        {
+          "index": 7,
+          "matched_id": 1,
+          "mask_iou": 0.9693448206772189,
+          "conf": 0.943848,
+          "mask_pixels": 4985,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            447,
+            588,
+            75,
+            82
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.9693448206772189
+        },
+        {
+          "index": 8,
+          "matched_id": 3,
+          "mask_iou": 0.9715688279811823,
+          "conf": 0.943359,
+          "mask_pixels": 4855,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            280,
+            863,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.9715688279811823
+        },
+        {
+          "index": 9,
+          "matched_id": 2,
+          "mask_iou": 0.9566200657894737,
+          "conf": 0.942871,
+          "mask_pixels": 4852,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            753,
+            728,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            384
+          ],
+          "best_reference_iou": 0.9566200657894737
+        },
+        {
+          "index": 10,
+          "matched_id": 4,
+          "mask_iou": 0.9728886288277745,
+          "conf": 0.942383,
+          "mask_pixels": 5101,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            102,
+            2001,
+            73,
+            85
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            1536
+          ],
+          "best_reference_iou": 0.9728886288277745
+        },
+        {
+          "index": 11,
+          "matched_id": 8,
+          "mask_iou": 0.9344005373334826,
+          "conf": 0.922363,
+          "mask_pixels": 8586,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            695,
+            3177,
+            106,
+            111
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            2688
+          ],
+          "best_reference_iou": 0.9344005373334826
+        }
+      ],
+      "milliseconds": 548.71,
+      "raw_tiles_predictions": 51,
+      "tiles": 76
+    },
+    {
+      "id": "EXTRA_019",
+      "alias": "EXTRA_019",
+      "group": "焊缝2",
+      "source_cut_x": 513,
+      "gt": 11,
+      "predicted": 11,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 6,
+          "mask_iou": 0.9632780082987552,
+          "conf": 0.950195,
+          "mask_pixels": 4803,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            606,
+            2786,
+            74,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            2304
+          ],
+          "best_reference_iou": 0.9632780082987552
+        },
+        {
+          "index": 2,
+          "matched_id": 11,
+          "mask_iou": 0.9773952716715056,
+          "conf": 0.949219,
+          "mask_pixels": 4798,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            176,
+            6536,
+            75,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            6144
+          ],
+          "best_reference_iou": 0.9773952716715056
+        },
+        {
+          "index": 3,
+          "matched_id": 1,
+          "mask_iou": 0.9723691945914168,
+          "conf": 0.948242,
+          "mask_pixels": 5087,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1037,
+            585,
+            73,
+            84
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            384
+          ],
+          "best_reference_iou": 0.9723691945914168
+        },
+        {
+          "index": 4,
+          "matched_id": 7,
+          "mask_iou": 0.977599080987938,
+          "conf": 0.948242,
+          "mask_pixels": 5195,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1115,
+            2998,
+            74,
+            84
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            2688
+          ],
+          "best_reference_iou": 0.977599080987938
+        },
+        {
+          "index": 5,
+          "matched_id": 4,
+          "mask_iou": 0.9667099005620406,
+          "conf": 0.946289,
+          "mask_pixels": 4619,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            691,
+            2008,
+            74,
+            77
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            1536
+          ],
+          "best_reference_iou": 0.9667099005620406
+        },
+        {
+          "index": 6,
+          "matched_id": 10,
+          "mask_iou": 0.9674709177078845,
+          "conf": 0.946289,
+          "mask_pixels": 4618,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            593,
+            5994,
+            73,
+            77
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            5760
+          ],
+          "best_reference_iou": 0.9674709177078845
+        },
+        {
+          "index": 7,
+          "matched_id": 2,
+          "mask_iou": 0.9688407199535514,
+          "conf": 0.945801,
+          "mask_pixels": 5147,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            195,
+            725,
+            74,
+            84
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.9688407199535514
+        },
+        {
+          "index": 8,
+          "matched_id": 5,
+          "mask_iou": 0.9511677282377919,
+          "conf": 0.941895,
+          "mask_pixels": 3755,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            711,
+            2499,
+            65,
+            70
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            2304
+          ],
+          "best_reference_iou": 0.9511677282377919
+        },
+        {
+          "index": 9,
+          "matched_id": 3,
+          "mask_iou": 0.9744086855370299,
+          "conf": 0.941406,
+          "mask_pixels": 5137,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            868,
+            863,
+            74,
+            85
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            384
+          ],
+          "best_reference_iou": 0.9744086855370299
+        },
+        {
+          "index": 10,
+          "matched_id": 9,
+          "mask_iou": 0.9719021629270265,
+          "conf": 0.941406,
+          "mask_pixels": 4926,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            160,
+            3887,
+            76,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            3456
+          ],
+          "best_reference_iou": 0.9719021629270265
+        },
+        {
+          "index": 11,
+          "matched_id": 8,
+          "mask_iou": 0.9605813953488372,
+          "conf": 0.921875,
+          "mask_pixels": 8323,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            136,
+            3186,
+            108,
+            108
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            3072
+          ],
+          "best_reference_iou": 0.9605813953488372
+        }
+      ],
+      "milliseconds": 519.44,
+      "raw_tiles_predictions": 61,
+      "tiles": 76
+    },
+    {
+      "id": "EXTRA_020",
+      "alias": "EXTRA_020",
+      "group": "焊缝2",
+      "source_cut_x": 263,
+      "gt": 11,
+      "predicted": 11,
+      "missed": [],
+      "matched": 11,
+      "unmatched_pred": [],
+      "detections": [
+        {
+          "index": 1,
+          "matched_id": 4,
+          "mask_iou": 0.9698453103583317,
+          "conf": 0.951172,
+          "mask_pixels": 5073,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            508,
+            2019,
+            75,
+            83
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            1536
+          ],
+          "best_reference_iou": 0.9698453103583317
+        },
+        {
+          "index": 2,
+          "matched_id": 7,
+          "mask_iou": 0.9543610547667343,
+          "conf": 0.950684,
+          "mask_pixels": 4901,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            927,
+            3016,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            2688
+          ],
+          "best_reference_iou": 0.9543610547667343
+        },
+        {
+          "index": 3,
+          "matched_id": 10,
+          "mask_iou": 0.9683995922528033,
+          "conf": 0.950684,
+          "mask_pixels": 4873,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            414,
+            5991,
+            75,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            5760
+          ],
+          "best_reference_iou": 0.9683995922528033
+        },
+        {
+          "index": 4,
+          "matched_id": 11,
+          "mask_iou": 0.9579920184835119,
+          "conf": 0.949707,
+          "mask_pixels": 4735,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1147,
+            6531,
+            74,
+            77
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            6144
+          ],
+          "best_reference_iou": 0.9579920184835119
+        },
+        {
+          "index": 5,
+          "matched_id": 2,
+          "mask_iou": 0.9628865979381444,
+          "conf": 0.947266,
+          "mask_pixels": 4819,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            9,
+            730,
+            73,
+            79
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            384
+          ],
+          "best_reference_iou": 0.9628865979381444
+        },
+        {
+          "index": 6,
+          "matched_id": 5,
+          "mask_iou": 0.9545691906005221,
+          "conf": 0.946289,
+          "mask_pixels": 3830,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            529,
+            2516,
+            66,
+            71
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            0,
+            2304
+          ],
+          "best_reference_iou": 0.9545691906005221
+        },
+        {
+          "index": 7,
+          "matched_id": 3,
+          "mask_iou": 0.9757140081600932,
+          "conf": 0.945801,
+          "mask_pixels": 5118,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            683,
+            861,
+            75,
+            83
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            384
+          ],
+          "best_reference_iou": 0.9757140081600932
+        },
+        {
+          "index": 8,
+          "matched_id": 6,
+          "mask_iou": 0.9652280629985682,
+          "conf": 0.944824,
+          "mask_pixels": 4863,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            423,
+            2798,
+            74,
+            80
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            288,
+            2304
+          ],
+          "best_reference_iou": 0.9652280629985682
+        },
+        {
+          "index": 9,
+          "matched_id": 9,
+          "mask_iou": 0.9646464646464646,
+          "conf": 0.943359,
+          "mask_pixels": 4941,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1127,
+            3905,
+            74,
+            82
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            3456
+          ],
+          "best_reference_iou": 0.9646464646464646
+        },
+        {
+          "index": 10,
+          "matched_id": 1,
+          "mask_iou": 0.9662276975361087,
+          "conf": 0.941406,
+          "mask_pixels": 4682,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            850,
+            592,
+            73,
+            78
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            576,
+            384
+          ],
+          "best_reference_iou": 0.9662276975361087
+        },
+        {
+          "index": 11,
+          "matched_id": 8,
+          "mask_iou": 0.972639113368737,
+          "conf": 0.932617,
+          "mask_pixels": 8473,
+          "pending_overlap_fraction": 0.0,
+          "xywh_periodic": [
+            1099,
+            3198,
+            109,
+            110
+          ],
+          "at_tile_edge": false,
+          "source_tile": [
+            864,
+            2688
+          ],
+          "best_reference_iou": 0.972639113368737
+        }
+      ],
+      "milliseconds": 542.82,
+      "raw_tiles_predictions": 66,
+      "tiles": 76
+    }
+  ],
+  "count_correct_images": 8,
+  "visual_review": [
+    {
+      "source": "OLD_U12",
+      "index": 12,
+      "finding": "same_opening_tile_fragment",
+      "adjacent_ref_id": 8,
+      "mask_fraction_overlapping_ref": 0.9747425208435507
+    },
+    {
+      "source": "EXTRA_016",
+      "index": 12,
+      "finding": "same_opening_tile_fragment",
+      "adjacent_ref_id": 8,
+      "mask_fraction_overlapping_ref": 0.9779208831646734
+    },
+    {
+      "source": "EXTRA_016",
+      "index": 13,
+      "finding": "rim_tile_fragment",
+      "adjacent_ref_id": 9,
+      "mask_fraction_overlapping_ref": 0.4124293785310734
+    },
+    {
+      "source": "EXTRA_016",
+      "index": 14,
+      "finding": "apparent_weld_reflection_false_positive",
+      "adjacent_ref_id": null,
+      "mask_fraction_overlapping_ref": 0.0
+    }
+  ]
+}

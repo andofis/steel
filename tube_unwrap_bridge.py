@@ -13,7 +13,7 @@ from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
 import cv2
 import numpy as np
 
-from tube_unwrap import HoleSettings, Recipe, TubeUnwrapper, UnwrapStatus
+from tube_unwrap import HoleSettings, PhaseCalibration, Recipe, TubeUnwrapper, UnwrapStatus
 from tube_unwrap.geometry import CameraCalibration
 from tube_unwrap.panorama_seam import PanoramaSeam, present_panorama
 from unwrap_output import OutputSizes
@@ -32,6 +32,7 @@ class BridgeResult:
     bounds: Tuple[Tuple[float, float, float, float], ...]
     input_shapes: Tuple[Tuple[int, int], ...]
     panorama_seam: Optional[PanoramaSeam] = None
+    phase_calibration_id: str | None = None
 
     @property
     def ok(self) -> bool:
@@ -99,6 +100,7 @@ class TubeUnwrapBridge:
         perspective = float(self.config.get("perspective", 0.09))
         search_x = int(self.config.get("search_x", 100))
         search_y = int(self.config.get("search_y", 75))
+        profile = self.config.get("nominal_phase_calibration")
         cameras: List[CameraCalibration] = []
         for camera_config, (top, bottom) in zip(self.config["cameras"], bounds):
             cameras.append(CameraCalibration(
@@ -122,6 +124,7 @@ class TubeUnwrapBridge:
             blend_px=round(self.config.get("blend_px", 20) * out_w / grid.width),
             max_view_deg=float(self.config.get("max_view_deg", 68.0)),
             hole_settings=HoleSettings(**self.config.get("hole_settings", {})),
+            nominal_phase_calibration=PhaseCalibration(**profile) if profile is not None else None,
         )
 
     def process_packets(self, packets: Dict[int, Any], *, output_size: tuple[int, int] | None = None) -> BridgeResult:
@@ -198,4 +201,5 @@ class TubeUnwrapBridge:
             hole_count=len(result.holes),
             bounds=calibration_bounds,
             input_shapes=tuple(shapes),
+            phase_calibration_id=result.phase_calibration_id,
         )

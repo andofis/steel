@@ -195,6 +195,23 @@ svg {
   gap: 18px;
 }
 
+.inspection-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 36px;
+  padding: 0 12px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: var(--accent-dim);
+  color: var(--accent-strong);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.inspection-link:hover { background: rgba(104, 227, 194, 0.19); }
+.inspection-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+
 .scope-badge {
   display: flex;
   align-items: center;
@@ -1377,6 +1394,12 @@ select:disabled {
 }
 
 #unwrappedImage[hidden] { display: none; }
+
+.unwrapped-image-stack {
+  position: relative;
+  width: 100%;
+  margin: 0 auto;
+}
 
 .unwrapped-placeholder {
   min-height: 100%;

@@ -1,0 +1,61 @@
+{
+  "engine_sha256": "fd3cf779f35aec8af5c528453dbfa13ac241a8a6c60e282cbe2e58ae0ed8755f",
+  "scope": "Warm replay from existing grayscale panorama. Includes roll/resize/tiling/preprocessing/inference/NMS/mask decode/pipe merge. Excludes capture, actual unwrap and UI.",
+  "labels": "Same 10 validation panoramas with reference masks initially labeled by SAM 3.",
+  "precision": "PyTorch CUDA AMP vs TensorRT FP16, with FP32 mask reconstruction in TensorRT runner.",
+  "backend": {
+    "pytorch_amp": {
+      "backend": "pytorch_amp",
+      "size_wh": [
+        1152,
+        7500
+      ],
+      "confidence": 0.25,
+      "match_iou": 0.5,
+      "captures": 10,
+      "repeats": 3,
+      "matched": 110,
+      "ground_truth": 110,
+      "missed": 0,
+      "extra": 0,
+      "mean_mask_iou": 0.9688280160093606,
+      "correct_pipe_counts": 10,
+      "latency_ms_p50": 1301.26,
+      "latency_ms_p95": 1571.5484999999999,
+      "latency_ms_max": 2200.38
+    },
+    "tensorrt_fp16": {
+      "backend": "tensorrt_fp16",
+      "size_wh": [
+        1152,
+        7500
+      ],
+      "confidence": 0.25,
+      "match_iou": 0.5,
+      "captures": 10,
+      "repeats": 3,
+      "matched": 110,
+      "ground_truth": 110,
+      "missed": 0,
+      "extra": 0,
+      "mean_mask_iou": 0.9687168415492357,
+      "correct_pipe_counts": 10,
+      "latency_ms_p50": 697.065,
+      "latency_ms_p95": 914.0790000000001,
+      "latency_ms_max": 1075.69
+    }
+  },
+  "cross_backend_matched_instances": 110,
+  "cross_backend_iou_mean": 0.9983352329087207,
+  "cross_backend_iou_min": 0.9898571724280687,
+  "previous_main_hole_8_coverage": {
+    "OLD_U12": {
+      "pytorch_amp": 0.9979215062966132,
+      "tensorrt_fp16": 0.9976769776256266
+    },
+    "EXTRA_016": {
+      "pytorch_amp": 0.9882445141065831,
+      "tensorrt_fp16": 0.9883564711150918
+    }
+  }
+}

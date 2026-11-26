@@ -1,0 +1,51 @@
+{
+  "checkpoint": "D:\\钢管拼接\\steel\\models\\pipe_hole_yolo_world_seg_m_v1\\best_coco_segm_mAP_epoch_24.pth",
+  "checkpoint_sha256": "2b70861ba4fe39076f15f2454bcb202441a51fcb237bad517adb59486115139c",
+  "input": "float32 RGB NCHW, values in [0,1], 640x640",
+  "onnx_opset": 17,
+  "outputs": {
+    "boxes": [
+      8400,
+      4
+    ],
+    "scores": [
+      8400
+    ],
+    "mask_coefficients": [
+      8400,
+      32
+    ],
+    "mask_prototypes": [
+      32,
+      160,
+      160
+    ]
+  },
+  "fixed_prompt": "hole",
+  "fp16_internal": true,
+  "fp16_io": "float32",
+  "adaptive_pool_shapes": [
+    [
+      80,
+      80
+    ],
+    [
+      40,
+      40
+    ],
+    [
+      20,
+      20
+    ]
+  ],
+  "fp32_ort_max_abs_errors": {
+    "batch1/boxes": 0.01171875,
+    "batch1/scores": 1.2337730481704057e-07,
+    "batch1/mask_coefficients": 4.073977470397949e-05,
+    "batch1/mask_prototypes": 4.482269287109375e-05,
+    "batch2/boxes": 0.01171875,
+    "batch2/scores": 1.2734413701309677e-07,
+    "batch2/mask_coefficients": 4.073977470397949e-05,
+    "batch2/mask_prototypes": 4.482269287109375e-05
+  }
+}

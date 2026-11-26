@@ -189,7 +189,7 @@
 
   function setUnwrappedZoom(value) {
     state.unwrappedZoom = Math.min(4, Math.max(0.5, Number(value) || 1));
-    ui.unwrappedImage.style.width = `${Math.round(state.unwrappedZoom * 100)}%`;
+    ui.unwrappedImage.parentElement.style.width = `${Math.round(state.unwrappedZoom * 100)}%`;
   }
 
   function showUnwrapSize(spec) {

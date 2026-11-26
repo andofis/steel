@@ -15,9 +15,12 @@ from pathlib import Path
 from urllib.parse import parse_qs, urlparse
 
 from hikrobot_camera import HikRobotService
+from pipe_inspection import PipeInspection
 
 ROOT = Path(__file__).resolve().parent
 SERVICE = HikRobotService()
+INSPECTION = PipeInspection(ROOT / "inspection_settings.json")
+SERVICE.on_panorama_ready = INSPECTION.submit
 
 
 def find_available_port(preferred: int, attempts: int = 20) -> int:
@@ -69,6 +72,28 @@ class CaptureHandler(http.server.SimpleHTTPRequestHandler):
         path = parsed.path
         if path == "/api/state":
             self.send_json({"ok": True, "state": SERVICE.get_state()})
+            return
+        if path == "/api/inspection":
+            self.send_json({"ok": True, "state": INSPECTION.state()})
+            return
+        if path == "/api/inspection/result":
+            query = parse_qs(parsed.query)
+            pipe_id = query.get("pipe", [""])[0]
+            timeout = 10 if query.get("wait") == ["1"] else 0
+            try:
+                result = INSPECTION.wait_result(pipe_id, timeout)
+                if result is None and pipe_id:
+                    latest = SERVICE.wait_for_unwrapped("", timeout=0)
+                    if latest and latest["pipe_id"] == pipe_id and latest.get("file"):
+                        try:
+                            archived = json.loads(Path(latest["file"]).with_name("inspection.json").read_text(encoding="utf-8"))
+                            if isinstance(archived, dict) and archived.get("pipe_id") == pipe_id:
+                                result = archived
+                        except (OSError, ValueError):
+                            pass
+                self.send_json({"ok": True, "result": result})
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
+                pass
             return
         if path.startswith("/api/camera-xml/"):
             try:
@@ -138,6 +163,25 @@ class CaptureHandler(http.server.SimpleHTTPRequestHandler):
         path = urlparse(self.path).path
         try:
             body = self.read_json()
+            if path == "/api/inspection/config":
+                state = INSPECTION.configure(backend=body.get("backend"), tolerances=body.get("tolerances"),
+                                             active_template=body.get("active_template"))
+                self.send_json({"ok": True, "state": state})
+                return
+            if path == "/api/inspection/enabled":
+                self.send_json({"ok": True, "state": INSPECTION.set_enabled(body.get("enabled"))})
+                return
+            if path == "/api/inspection/templates":
+                pipe_id = body.get("pipe_id")
+                if not isinstance(pipe_id, str) or not pipe_id:
+                    raise ValueError("请选择当前展开图")
+                try:
+                    png, info = SERVICE.get_latest_unwrapped(pipe_id)
+                except (RuntimeError, FileNotFoundError) as exc:
+                    raise RuntimeError("当前展开图已更新，请重新确认样管") from exc
+                state = INSPECTION.record_template(body.get("name"), png, info)
+                self.send_json({"ok": True, "state": state})
+                return
             if path == "/api/refresh":
                 count = SERVICE.refresh_devices(quiet=False)
                 self.send_json({"ok": True, "device_count": count, "state": SERVICE.get_state()})
@@ -197,6 +241,7 @@ def shutdown_service() -> None:
         SERVICE.shutdown()
     except Exception:
         pass
+    INSPECTION.close()
 
 
 def main() -> None:

@@ -1,8 +1,14 @@
 __pycache__/
 *.py[cod]
 settings.json
+/inspection_settings.json
+/inspection_settings_images/
 captures/
 /datasets/
 *.log
 *.tmp
 cam_*_genicam.xml
+
+# Local YOLO-World training checkpoints
+/models/pipe_hole_yolo_world_seg_m_v1/epoch_*.pth
+/models/pipe_hole_yolo_world_seg_m_v1/best_coco_segm_mAP_epoch_*.pth

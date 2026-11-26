@@ -1,0 +1,30 @@
+{
+  "backend": "TensorRT-RTX",
+  "tensorrt_version": "1.7.1.116",
+  "gpu": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "onnx_source": "yolo_world_seg_m_640_fp16.onnx",
+  "engine": "yolo_world_seg_m_640_b1-8_fp16.engine",
+  "precision": "Explicit FP16 from ONNX graph with FP32 I/O and designated FP32 operations",
+  "shape_profile_nchw": [
+    [
+      1,
+      3,
+      640,
+      640
+    ],
+    [
+      8,
+      3,
+      640,
+      640
+    ],
+    [
+      8,
+      3,
+      640,
+      640
+    ]
+  ],
+  "workspace_bytes": 1073741824,
+  "build_seconds": 2.75
+}

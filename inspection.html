@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN" class="inspection-page">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark">
+  <title>流水线检测 · 钢管采集控制台</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="inspection.css">
+  <script src="pipe_inspection_ui.js" defer></script>
+</head>
+<body>
+  <div class="inspection-shell">
+    <header class="inspection-header">
+      <h1>流水线检测</h1>
+      <div class="inspection-header-actions">
+        <span id="pipeLineState" class="inspection-line-state">正在读取状态</span>
+        <a class="inspection-link" href="./">返回采集控制台</a>
+      </div>
+    </header>
+
+    <main class="inspection-workspace">
+      <section class="inspection-viewer" aria-labelledby="inspectionViewerTitle">
+        <header class="inspection-viewer-header">
+          <div>
+            <h2 id="inspectionViewerTitle">钢管展开图</h2>
+            <p id="pipeImageMeta"></p>
+          </div>
+          <div class="inspection-zoom" role="group" aria-label="展开图缩放">
+            <button type="button" data-zoom="fit" disabled>整管</button>
+            <button type="button" data-zoom="actual" disabled>原像素</button>
+            <button type="button" data-zoom="out" aria-label="缩小" disabled>−</button>
+            <button type="button" data-zoom="in" aria-label="放大" disabled>＋</button>
+          </div>
+        </header>
+        <div class="inspection-scroll" id="pipeImageScroll" tabindex="0" aria-label="展开图滚动区域">
+          <div class="unwrapped-image-stack" id="pipeImageStack">
+            <img id="unwrappedImage" alt="当前钢管展开图" hidden>
+            <canvas id="pipeInspectionOverlay" aria-hidden="true" hidden></canvas>
+          </div>
+          <div class="inspection-placeholder" id="pipeImagePlaceholder">
+            <strong>暂无展开图</strong>
+            <p>在采集控制台完成一根钢管的采集，这里会自动更新。</p>
+          </div>
+        </div>
+        <div class="inspection-legend" aria-label="掩膜图例">
+          <span class="legend-ok">合格孔</span>
+          <span class="legend-defect">异常孔</span>
+          <span class="legend-missing">漏孔位置</span>
+        </div>
+      </section>
+
+      <aside class="inspection-sidebar" aria-label="判定与设置">
+        <section class="inspection-panel" aria-labelledby="inspectionResultTitle">
+          <h2 id="inspectionResultTitle">判定结果</h2>
+          <div id="pipeInspectionStatus" class="inspection-status" role="status">
+            <strong id="pipeVerdict">正在读取检测设置</strong>
+            <p id="pipeVerdictDetail" hidden></p>
+          </div>
+        </section>
+        <section class="inspection-panel" aria-labelledby="inspectionControlsTitle">
+          <h2 id="inspectionControlsTitle">检测设置</h2>
+          <div class="inspection-fields">
+            <label for="pipeTemplateSelect">检测模板</label>
+            <select id="pipeTemplateSelect" disabled>
+              <option value="">请选择模板</option>
+            </select>
+            <button id="pipeRecordTemplate" type="button" disabled>录入当前样管</button>
+            <form id="pipeTemplateForm" class="inspection-enroll" hidden>
+              <label for="pipeTemplateName">合格样管模板名</label>
+              <input id="pipeTemplateName" name="name" required maxlength="60" autocomplete="off">
+              <div>
+                <button type="submit">确认录入</button>
+                <button id="pipeCancelTemplate" type="button">取消</button>
+              </div>
+            </form>
+            <label for="pipeInferenceBackend">推理设备</label>
+            <select id="pipeInferenceBackend" disabled>
+              <option value="cpu">CPU</option>
+              <option value="gpu">GPU · ONNX</option>
+              <option value="tensorrt">GPU · TensorRT FP16</option>
+            </select>
+            <button class="inspection-toggle" id="pipeInspectionToggle" type="button" aria-pressed="false" disabled>开启流水线检测</button>
+          </div>
+          <details class="inspection-limits">
+            <summary>对齐限位与孔洞公差</summary>
+            <form id="pipeInspectionLimits">
+              <label>圆周转角 ±° <input name="max_rotation_deg" type="number" min="0" max="180" step="0.1" required disabled></label>
+              <label>轴向平移 ±% <input name="max_axial_pct" type="number" min="0" max="25" step="0.01" required disabled></label>
+              <label>孔位偏差 % <input name="position_pct" type="number" min="0.01" max="5" step="0.01" required disabled></label>
+              <label>面积偏差 % <input name="size_pct" type="number" min="0" max="100" step="0.1" required disabled></label>
+              <label>最小形状重叠 % <input name="shape_iou" type="number" min="0" max="100" step="0.1" required disabled></label>
+              <button type="submit" disabled>保存公差</button>
+            </form>
+          </details>
+        </section>
+      </aside>
+    </main>
+  </div>
+</body>
+</html>

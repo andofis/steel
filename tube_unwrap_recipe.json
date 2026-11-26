@@ -10,6 +10,11 @@
   "perspective": 0.09,
   "search_x": 100,
   "search_y": 75,
+  "nominal_phase_calibration": {
+    "id": "nominal-phase-v2",
+    "width_fraction": [0.94, 1.06],
+    "phases": [1532, 358, 751, 1133]
+  },
   "hole_settings": {
     "merge_tolerance_px": 16
   },

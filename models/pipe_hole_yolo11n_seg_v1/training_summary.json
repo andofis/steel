@@ -1,0 +1,46 @@
+{
+  "started_local": "2026-11-24T15:39:40.593089+08:00",
+  "completed_local": "2026-11-24T16:42:38.130189+08:00",
+  "training_seconds_csv": 3679.93,
+  "epochs_completed": 89,
+  "task": "segment",
+  "classes": {
+    "0": "hole"
+  },
+  "base": "D:\\钢管拼接\\steel\\datasets\\_review_outputs\\分割模型选型测速_20261123\\yolo11n-seg.pt",
+  "initial_sha256": "55ed65c56c91713d23e8402371c6c49a6fd84f257f7dce452e8d70e41dcbe152",
+  "dataset": "D:\\钢管展开图\\04_孔洞分割迁移学习数据集\\yolo_seg\\data.yaml",
+  "dataset_tiles_manifest_sha256": "a4aca816c2772d527e0fbead347c5a953da5fce20488da9755f26e8975a54d90",
+  "split_counts": {
+    "train": {
+      "panoramas": 30,
+      "tiles": 1232,
+      "source_instances": 175
+    },
+    "val": {
+      "panoramas": 10,
+      "tiles": 602,
+      "source_instances": 110
+    }
+  },
+  "validation_label_provenance": "SAM 3 prelabels with targeted review and a grouped holdout",
+  "device": "NVIDIA GeForce RTX 4060 Laptop GPU",
+  "torch": "2.11.0+cu128",
+  "ultralytics": "8.4.176",
+  "best": "D:\\钢管拼接\\steel\\models\\pipe_hole_yolo11n_seg_v1\\weights\\best.pt",
+  "best_epoch": 69,
+  "best_sha256": "ec6c9cf8fea6b48aaa14ac9bdd67591cfab7e387ef200de20b8c9552d1bd56a2",
+  "best_epoch_mask_metrics": {
+    "precision": 0.99376,
+    "recall": 0.99748,
+    "mAP50": 0.9949,
+    "mAP50_95": 0.95635
+  },
+  "last": "D:\\钢管拼接\\steel\\models\\pipe_hole_yolo11n_seg_v1\\weights\\last.pt",
+  "last_sha256": "8220a1262473e8e38087706d0d6b5a9b7a60e604635297471ceaddceda0189a2",
+  "smoke_test": {
+    "sample": "images/val/EXTRA_017_y0384_x0000.png",
+    "output": "nonempty 640x640 instance segmentation",
+    "detections": 1
+  }
+}

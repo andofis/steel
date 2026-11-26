@@ -1,0 +1,43 @@
+{
+  "train_captures": 30,
+  "val_captures": 10,
+  "heldout_reference_instances": 110,
+  "confidence": 0.25,
+  "matching_mask_iou": 0.5,
+  "report": [
+    {
+      "model": "YOLO11n-seg",
+      "checkpoint_epoch": 69,
+      "matched": 110,
+      "missed": 0,
+      "extra": 4,
+      "precision": 0.9649122807017544,
+      "recall": 1.0,
+      "mean_iou": 0.960907950877613,
+      "iou_at_least_90": 108,
+      "correct_count": 8,
+      "warm_ms_median": 548.71,
+      "warm_ms_min": 507.74,
+      "warm_ms_max": 742.01,
+      "cold_first_ms": 3662.39
+    },
+    {
+      "model": "YOLO-World-Seg-M",
+      "checkpoint_epoch": 24,
+      "matched": 110,
+      "missed": 0,
+      "extra": 0,
+      "precision": 1.0,
+      "recall": 1.0,
+      "mean_iou": 0.9688280160093606,
+      "iou_at_least_90": 110,
+      "correct_count": 10,
+      "warm_ms_median": 1397.14,
+      "warm_ms_min": 1298.92,
+      "warm_ms_max": 1868.03,
+      "cold_first_ms": 1845.78
+    }
+  ],
+  "label_provenance": "The same held-out SAM 3 prelabels used for selecting the two checkpoints.",
+  "elapsed_scope": "Resize, tile, neural inference, and merge. Excludes capture, unwrap, and UI."
+}

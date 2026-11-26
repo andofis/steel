@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import math
 from concurrent.futures import CancelledError, ThreadPoolExecutor
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum
 from importlib.resources import files
 from pathlib import Path
@@ -15,7 +15,7 @@ from typing import Sequence
 import cv2
 import numpy as np
 
-from .geometry import CameraCalibration, locate_body_with_fallback, project_contour, source_coordinates
+from .geometry import CameraCalibration, _row_profiles, locate_body_with_fallback, project_contour, source_coordinates
 from .hole_blending import blend_holes
 from .holes import Hole, HoleSettings, find_hole_groups, find_holes
 
@@ -24,6 +24,13 @@ class UnwrapStatus(str, Enum):
     OK = "ok"
     INVALID_INPUT = "invalid_input"
     REVIEW = "review"
+
+
+@dataclass(frozen=True)
+class PhaseCalibration:
+    id: str
+    width_fraction: tuple[float, float]
+    phases: tuple[float, float, float, float]
 
 
 @dataclass(frozen=True)
@@ -38,6 +45,7 @@ class Recipe:
     hole_settings: HoleSettings = field(default_factory=HoleSettings)
     input_height_range: tuple[int, int] | None = None
     reference_size: tuple[int, int] | None = None  # Calibrated width/height, not an intermediate image.
+    nominal_phase_calibration: PhaseCalibration | None = None
 
     @property
     def reference_grid(self) -> tuple[int, int]:
@@ -59,6 +67,7 @@ class Recipe:
 
     @classmethod
     def _from_data(cls, data: dict) -> Recipe:
+        calibration = data.get("nominal_phase_calibration")
         return cls(
             cameras=tuple(CameraCalibration(**camera) for camera in data["cameras"]),
             input_shape=tuple(data["input_shape"]),
@@ -71,6 +80,7 @@ class Recipe:
             hole_settings=HoleSettings(**data.get("hole_settings", {})),
             input_height_range=(tuple(data["input_height_range"])
                                 if "input_height_range" in data else None),
+            nominal_phase_calibration=PhaseCalibration(**calibration) if calibration is not None else None,
         )
 
 
@@ -84,6 +94,7 @@ class UnwrapResult:
     message: str = ""
     elapsed_ms: float = 0.0
     camera_bounds: tuple[tuple[float, float, float, float], ...] = ()
+    phase_calibration_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -154,6 +165,14 @@ class TubeUnwrapper:
             raise ValueError("blend_px must be a nonnegative integer smaller than width/8")
         if not math.isfinite(r.trim_px) or r.trim_px < 0 or not 0 < r.max_view_deg < 90:
             raise ValueError("Invalid trim or view angle")
+        profile = r.nominal_phase_calibration
+        if profile is not None:
+            if (not isinstance(profile.id, str) or not profile.id.strip() or len(profile.width_fraction) != 2
+                    or not all(map(math.isfinite, profile.width_fraction))
+                    or not 0 < profile.width_fraction[0] <= 1 <= profile.width_fraction[1]
+                    or len(profile.phases) != len(r.cameras)
+                    or not all(0 <= phase < r.reference_grid[0] for phase in profile.phases)):
+                raise ValueError("Invalid nominal camera phase calibration")
         for c in r.cameras:
             values = (c.left, c.right, c.top, c.bottom, c.phase, c.perspective)
             if not all(map(math.isfinite, values)) or not 0 <= c.phase < r.reference_grid[0]:
@@ -219,6 +238,20 @@ class TubeUnwrapper:
         geometries, cameras = zip(*(first + second), strict=True)
 
         r = self.recipe
+        projection = self
+        phase_calibration_id = None
+        profile = r.nominal_phase_calibration
+        if profile is not None:
+            # Evaluate projected silhouette width on the same central rows in every view.
+            fractions = np.linspace(.2, .8, 9, dtype=np.float32)
+            widths = [np.median(_row_profiles(body, fractions, r.trim_px)[1]) / nominal.radius
+                      for body, nominal in zip(geometries, r.cameras, strict=True)]
+            low, high = profile.width_fraction
+            if all(low <= width <= high for width in widths):
+                cameras = tuple(replace(camera, phase=phase)
+                                for camera, phase in zip(cameras, profile.phases, strict=True))
+                projection = TubeUnwrapper(replace(r, cameras=cameras, nominal_phase_calibration=None))
+                phase_calibration_id = profile.id
         ref_w, ref_h = r.reference_grid
 
         def project(camera_index: int, points: np.ndarray) -> tuple[np.ndarray, float]:
@@ -233,21 +266,22 @@ class TubeUnwrapper:
             holes = tuple(h.scaled(sx, sy) for h in holes)
             alternates = tuple(tuple(h.scaled(sx, sy) for h in group) for group in alternates)
         strips = []
-        for i, (frame, body, camera, view) in enumerate(zip(gray, geometries, cameras, self._views), 1):
+        for i, (frame, body, camera, view) in enumerate(zip(gray, geometries, cameras, projection._views), 1):
             strip = np.empty((r.height, view.columns.size), dtype=np.uint8)
             for start in range(0, r.height, 256):
                 rows = slice(start, start + 256)
-                map_x, map_y = source_coordinates(body, camera, view.ratio, self._rows[rows], r.trim_px)
+                map_x, map_y = source_coordinates(body, camera, view.ratio, projection._rows[rows], r.trim_px)
                 if (not 0 <= map_x.min() <= map_x.max() <= frame.shape[1]-1
                         or not 0 <= map_y.min() <= map_y.max() <= frame.shape[0]-1):
                     return failure(UnwrapStatus.REVIEW, f"Camera {i}: estimated mapping falls outside image")
                 cv2.remap(frame, map_x, map_y, cv2.INTER_LINEAR, dst=strip[rows])
             strips.append(strip)
-        image, source = self._assemble(strips, holes, alternates)
+        image, source = projection._assemble(strips, holes, alternates)
         valid = np.ones_like(image, dtype=bool)
         camera_bounds = tuple((c.left, c.right, c.top, c.bottom) for c in cameras)
         return UnwrapResult(UnwrapStatus.OK, image, valid, source, holes,
-                            elapsed_ms=(perf_counter()-started)*1000, camera_bounds=camera_bounds)
+                            elapsed_ms=(perf_counter()-started)*1000, camera_bounds=camera_bounds,
+                            phase_calibration_id=phase_calibration_id)
 
     def _assemble(
         self, strips: list[np.ndarray], holes: tuple[Hole, ...],
