@@ -307,16 +307,68 @@ def _recenter_side_search(
     return replace(calibration, left=float(left), right=float(right), search_x=span)
 
 
+def _recenter_from_ends(image: np.ndarray, calibration: CameraCalibration) -> CameraCalibration:
+    """Use the shared footprint of both ends to seed the outer side edges."""
+    inner = max(3, calibration.search_y // 5)
+    outer = max(inner + 3, 3 * calibration.search_y // 4)
+    top, bottom = round(calibration.top), round(calibration.bottom)
+    if top < outer or bottom + outer > image.shape[0] or bottom - top <= 2 * outer:
+        raise ValueError("Tube ends leave insufficient rows for independent side search")
+
+    def onset(row: int, sign: int) -> np.ndarray:
+        before = np.median(image[row - outer:row - inner], axis=0)
+        after = np.median(image[row + inner:row + outer], axis=0)
+        change = (sign * (after - before)).astype(np.float32)
+        return cv2.blur(change[None, :], (11, 1)).ravel()
+
+    support = np.minimum(onset(top, 1), onset(bottom, -1)) >= 6
+    gap = max(3, 2 * round(calibration.radius * .2) + 1)
+    filled = cv2.morphologyEx(
+        support[None, :].astype(np.uint8), cv2.MORPH_CLOSE,
+        np.ones((1, gap), dtype=np.uint8),
+    ).ravel()
+    columns = np.flatnonzero(filled)
+    candidates = [
+        (int(support[span].sum()), int(span[0]), int(span[-1]))
+        for span in np.split(columns, np.flatnonzero(np.diff(columns) != 1) + 1)
+        if span.size >= 36 and support[span].mean() >= .70
+    ]
+    if not candidates:
+        raise ValueError("Tube ends do not support a common outer span")
+    candidates.sort(reverse=True)
+    strongest, left, right = candidates[0]
+    if len(candidates) > 1 and candidates[1][0] >= .8 * strongest:
+        raise ValueError("Tube ends support more than one outer span")
+    span = min(calibration.search_x, max(12, round(.09 * (right - left))),
+               left - 3, image.shape[1] - right - 4)
+    return replace(calibration, left=float(left), right=float(right), search_x=span)
+
+
 def locate_body_with_fallback(
     image: np.ndarray, calibration: CameraCalibration,
 ) -> tuple[BodyGeometry, CameraCalibration]:
-    """Try calibrated and recentered side searches, then retry for weak edges."""
+    """Locate the tube and use both ends to resolve ambiguous side searches."""
     errors = []
     for edge_gain in (1.0, 2.0):
         for recenter in (False, True):
             try:
                 adjusted = (_recenter_side_search(image, calibration, edge_gain=edge_gain)
                             if recenter else calibration)
+                if recenter and not .8 * calibration.radius <= adjusted.radius <= 1.2 * calibration.radius:
+                    # A strong stripe can yield two internal edges. A large width change
+                    # requires independent support from the tube ends.
+                    raise ValueError("Recentered tube width needs support from both ends")
+                return locate_body(image, adjusted, edge_gain=edge_gain), adjusted
+            except ValueError as error:
+                errors.append(str(error))
+    try:
+        adjusted = _recenter_from_ends(image, calibration)
+    except ValueError as error:
+        errors.append(str(error))
+    else:
+        # The ends establish the footprint before the fitter tries weaker side gradients.
+        for edge_gain in (2.0, 4.0):
+            try:
                 return locate_body(image, adjusted, edge_gain=edge_gain), adjusted
             except ValueError as error:
                 errors.append(str(error))

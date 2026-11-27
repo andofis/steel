@@ -67,6 +67,18 @@ class TubeLocalizationTest(unittest.TestCase):
 
         self.assertTrue(result.ok, result.message)
 
+    def test_recenters_on_the_full_tube_past_a_brighter_reflection(self):
+        frame = self.frames[0]
+        frame.fill(40)
+        frame[210:1700, 783:1351] = 61
+        frame[210:1700, 925:1005] = 188
+
+        result = self.unwrap()
+
+        self.assertTrue(result.ok, result.message)
+        self.assertAlmostEqual(result.bounds[0][0], 783, delta=3)
+        self.assertAlmostEqual(result.bounds[0][1], 1351, delta=3)
+
     def test_unwraps_a_low_contrast_tube_within_or_outside_calibrated_windows(self):
         frame = self.frames[0]
         for left, right in ((507, 997), (613, 1010)):
