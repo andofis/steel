@@ -156,6 +156,28 @@ def find_holes(
     return holes
 
 
+def _horizontal_span(hole: Hole) -> tuple[float, float]:
+    if hole.contour:
+        xs = [x for x, _ in hole.contour]
+        return min(xs) - hole.x, max(xs) - hole.x
+    return -0.5 * hole.width, 0.5 * hole.width
+
+
+def _is_foreshortened_duplicate(
+    hole: Hole, other: Hole, delta_x: float, edge_tolerance: float,
+) -> bool:
+    """Match a grazing-angle partially occluded view whose span sits inside the frontal view."""
+    if hole.width >= 0.85 * other.width:
+        return False
+    o_lo, o_hi = _horizontal_span(other)
+    h_lo, h_hi = _horizontal_span(hole)
+    h_lo += delta_x
+    h_hi += delta_x
+    if min(o_hi, h_hi) <= max(o_lo, h_lo):
+        return False
+    return (o_lo - h_lo) <= edge_tolerance and (h_hi - o_hi) <= edge_tolerance
+
+
 def find_hole_groups(
     frames: Sequence[NDArray[np.uint8]],
     geometries: Sequence[_BodyGeometry],
@@ -184,8 +206,9 @@ def find_hole_groups(
             dy = abs(hole.y - other.y)
             if dy > min(settings.merge_tolerance_px, 0.35 * min(hole.height, other.height)):
                 continue
-            dx = abs((hole.x - other.x + width / 2) % width - width / 2)
-            if dx <= min(settings.merge_tolerance_px, 0.35 * min(hole.width, other.width)):
+            delta_x = (hole.x - other.x + width / 2) % width - width / 2
+            x_tol = min(settings.merge_tolerance_px, 0.35 * min(hole.width, other.width))
+            if abs(delta_x) <= x_tol or _is_foreshortened_duplicate(hole, other, delta_x, x_tol):
                 duplicates.append(hole)
                 break
         else:

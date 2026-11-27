@@ -18,6 +18,7 @@ import numpy as np
 from .geometry import CameraCalibration, _row_profiles, locate_body_with_fallback, project_contour, source_coordinates
 from .hole_blending import blend_holes
 from .holes import Hole, HoleSettings, find_hole_groups, find_holes
+from .ring_alignment import AUTO_RING_CALIBRATION_ID, estimate_ring_alignment
 
 
 class UnwrapStatus(str, Enum):
@@ -253,6 +254,16 @@ class TubeUnwrapper:
                 projection = TubeUnwrapper(replace(r, cameras=cameras, nominal_phase_calibration=None))
                 phase_calibration_id = profile.id
         ref_w, ref_h = r.reference_grid
+        aligned = estimate_ring_alignment(
+            gray, geometries, cameras, r.cameras, ref_w, r.trim_px, r.max_view_deg,
+        )
+        if aligned is not None:
+            cameras = tuple(
+                replace(camera, phase=phase, perspective=aligned.perspective)
+                for camera, phase in zip(cameras, aligned.phases, strict=True)
+            )
+            projection = TubeUnwrapper(replace(r, cameras=cameras, nominal_phase_calibration=None))
+            phase_calibration_id = AUTO_RING_CALIBRATION_ID
 
         def project(camera_index: int, points: np.ndarray) -> tuple[np.ndarray, float]:
             return project_contour(points, geometries[camera_index], cameras[camera_index],
